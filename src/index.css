@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@keyframes bulbFlash {
+  0%, 49% { opacity: 0.2; filter: brightness(0.6); }
+  50%, 100% { opacity: 1; filter: brightness(1.2); }
+}
+
+@keyframes bulbPulse { 
+  0%,100% { transform: scale(1); } 
+  50% { transform: scale(1.12); } 
+}
