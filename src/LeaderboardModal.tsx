@@ -1,8 +1,10 @@
+import { AnimatePresence, motion } from "framer-motion";
+
 type RankItem = {
   userId: string;
   name?: string;
-  wins?: number;         // fallback metric if you still track “wins”
-  amount?: number;       // coins/chips won in the block
+  wins?: number;    // fallback metric if you still track “wins”
+  amount?: number;  // coins/chips won in the block
   avatarUrl?: string;
 };
 
@@ -18,215 +20,230 @@ export default function LeaderboardModal({
   onClose: () => void;
   onStartNow?: () => void;
   ranking: RankItem[];
-  intermissionSec?: number;        // number | undefined
+  intermissionSec?: number;
   user?: { id: string } | undefined;
 }) {
-  if (!open) return null;
-
-  const fmt = (n?: number) =>
-    typeof n === "number" ? n.toLocaleString() : "0";
+  const fmt = (n?: number) => (typeof n === "number" ? n.toLocaleString() : "0");
 
   return (
-    <div className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm">
-      {/* Card */}
-      <div
-        className="relative w-[92%] max-w-md rounded-3xl text-white shadow-[0_24px_80px_rgba(0,0,0,.6)] pointer-events-auto"
-        style={{
-          background:
-            "linear-gradient(180deg,#8a2be2 0%,#7a27dc 30%,#5a1fcf 70%,#4317c2 100%)",
-          border: "4px solid #ff9f1a",
-          boxShadow:
-            "0 0 0 6px rgba(255,159,26,.25) inset, 0 16px 40px rgba(0,0,0,.45)",
-          position: "relative",
-          zIndex: 1000,
-        }}
-      >
-        {/* Close button */}
-        <button
-          type="button"
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white/90 hover:bg-white/25"
-          style={{ zIndex: 1001 }}
-          aria-label="Close"
         >
-          ✕
-        </button>
+          {/* Card container (click stop) */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 6 }}
+            transition={{ type: "spring", stiffness: 220, damping: 22 }}
+            className="relative w-[92%] max-w-sm rounded-[28px] px-4 pt-16 pb-5"
+            style={{
+              background:
+                "linear-gradient(180deg,#2379c9 0%, #1f6bb4 40%, #1b5d9c 75%, #154b7e 100%)",
+              boxShadow:
+                "0 24px 80px rgba(0,0,0,.45), inset 0 2px 0 rgba(255,255,255,.2)",
+              border: "2px solid rgba(255,255,255,.15)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Twisted ribbon (animated) */}
+            <div className="absolute -top-9 left-1/2 -translate-x-1/2">
+              <motion.div
+                initial={{ y: -18, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.05 }}
+              >
+                <RibbonBlue />
+              </motion.div>
+            </div>
 
-        {/* Gold Ribbon Header */}
-        <div className="relative px-4 pt-10">
-          <div className="relative mx-auto w-[88%]">
-            {/* Ribbon body */}
+            {/* Inner card */}
             <div
-              className="mx-auto w-full select-none rounded-2xl py-2 text-center text-[22px] font-extrabold tracking-wide"
+              className="rounded-[22px] border overflow-hidden"
               style={{
-                background:
-                  "linear-gradient(180deg,#ffdf7e 0%,#ffbd2e 60%,#ff9f1a 100%)",
-                color: "#7a26c6",
-                textShadow: "0 1px 0 rgba(255,255,255,.6)",
+                background: "linear-gradient(180deg,#e6f3ff 0%, #d9ecff 50%, #c9e4ff 100%)",
+                borderColor: "#2379c9",
                 boxShadow:
-                  "0 10px 22px rgba(0,0,0,.25), inset 0 2px 0 rgba(255,255,255,.7)",
-                border: "2px solid #ffc43a",
+                  "inset 0 2px 0 rgba(255,255,255,.8), 0 8px 24px rgba(19,62,112,.25)",
               }}
             >
-              LEADERBOARD
-            </div>
-            {/* Ribbon tails */}
-            <div className="pointer-events-none absolute -left-6 top-1/2 h-7 w-8 -translate-y-1/2 rounded-l-md"
-                 style={{background:"linear-gradient(180deg,#ffdf7e 0%,#ffbd2e 60%,#ff9f1a 100%)", boxShadow:"-6px 8px 0 0 rgba(0,0,0,.08)"}} />
-            <div className="pointer-events-none absolute -right-6 top-1/2 h-7 w-8 -translate-y-1/2 rounded-r-md"
-                 style={{background:"linear-gradient(180deg,#ffdf7e 0%,#ffbd2e 60%,#ff9f1a 100%)", boxShadow:"6px 8px 0 0 rgba(0,0,0,.08)"}} />
-          </div>
+              {/* Subtitle */}
+              <div className="mt-8 text-center text-[11px] font-semibold text-[#0f355e]">
+                Last 10 rounds • Next block
+                {typeof intermissionSec === "number" ? ` in ${intermissionSec}s` : ""}.
+              </div>
 
-          {/* Subtitle */}
-          <div className="mt-2 text-center text-[11px] font-medium text-white/85">
-            Last 10 rounds • Next block starts
-            {typeof intermissionSec === "number" ? ` in ${intermissionSec}s` : ""}.
-          </div>
-        </div>
+              {/* List */}
+              <div className="px-3 py-3">
+                {ranking.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-[#0f355e]">No winners this block.</div>
+                ) : (
+                  <div className="space-y-2">
+                    {ranking.map((r, i) => {
+                      const idx = i + 1;
+                      const isSelf = r.userId === user?.id;
 
-        {/* List */}
-        <div className="mt-4 max-h-[60vh] overflow-y-auto px-3 pb-4">
-          {ranking.length === 0 && (
-            <div className="py-10 text-center text-sm text-white/85">
-              No winners this block.
-            </div>
-          )}
+                      const crown =
+                        idx === 1 ? "🥇" : idx === 2 ? "🥈" : idx === 3 ? "🥉" : null;
 
-          <div className="space-y-2">
-            {ranking.map((r, i) => {
-              const idx = i + 1;
-              const isSelf = r.userId === user?.id;
+                      return (
+                        <motion.div
+                          key={r.userId + i}
+                          initial={{ opacity: 0, x: -18 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.12 + i * 0.05 }}
+                          className="relative flex items-center justify-between rounded-[14px] px-3 py-2.5"
+                          style={{
+                            background: "linear-gradient(180deg,#eef7ff 0%, #e6f2ff 100%)",
+                            boxShadow:
+                              "inset 0 2px 0 rgba(255,255,255,.9), 0 6px 12px rgba(23,73,128,.18)",
+                            border: "1px solid rgba(35,121,201,.35)",
+                          }}
+                        >
+                          {/* Left side */}
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            {/* Rank / crown */}
+                            <div className="w-7 flex justify-center">
+                              {crown ? (
+                                <span className="text-[20px] leading-none">{crown}</span>
+                              ) : (
+                                <span className="text-[13px] font-extrabold text-[#0f355e] tabular-nums">
+                                  {idx}
+                                </span>
+                              )}
+                            </div>
 
-              const crown =
-                idx === 1
-                  ? "🥇"
-                  : idx === 2
-                  ? "🥈"
-                  : idx === 3
-                  ? "🥉"
-                  : null;
+                            {/* Avatar */}
+                            <div
+                              className="grid h-8 w-8 place-items-center overflow-hidden rounded-full"
+                              style={{
+                                background: "linear-gradient(180deg,#ffffff,#f1f7ff)",
+                                border: "1px solid rgba(35,121,201,.35)",
+                                boxShadow: "0 2px 8px rgba(0,0,0,.12)",
+                              }}
+                            >
+                              {r.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={r.avatarUrl} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="text-lg text-[#0f355e]/40">👤</span>
+                              )}
+                            </div>
 
-              return (
-                <div
-                  key={r.userId + i}
-                  className={`relative flex items-center justify-between rounded-xl border px-3 py-2.5 shadow-sm transition`}
-                  style={{
-                    background: `linear-gradient(90deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.03) 100%)`,
-                    borderColor: "rgba(255,255,255,.18)",
-                  }}
-                >
-                  {/* Left side */}
-                  <div className="flex min-w-0 items-center gap-3">
-                    {/* Rank badge */}
-                    <div className="grid w-8 place-items-center text-sm font-extrabold tabular-nums">
-                      {crown ? (
-                        <span className="text-[18px] leading-none">{crown}</span>
-                      ) : (
-                        <span className="opacity-90">{idx}</span>
-                      )}
-                    </div>
+                            {/* Name */}
+                            <div className="min-w-0">
+                              <div
+                                className={`truncate text-[13px] font-extrabold tracking-wide ${
+                                  isSelf ? "text-[#2ab47a]" : "text-[#0f355e]"
+                                }`}
+                                style={{ textShadow: "0 1px 0 rgba(255,255,255,.8)" }}
+                              >
+                                {isSelf ? "YOU" : r.name || r.userId.slice(0, 6)}
+                              </div>
+                            </div>
+                          </div>
 
-                    {/* Avatar */}
-                    <div
-                      className="grid h-9 w-9 place-items-center overflow-hidden rounded-full border ring-0"
-                      style={{
-                        borderColor: "rgba(255,255,255,.25)",
-                        boxShadow: "0 2px 8px rgba(0,0,0,.25)",
-                        background:
-                          "linear-gradient(180deg,rgba(255,255,255,.85),rgba(255,255,255,.7))",
-                      }}
-                    >
-                      {r.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={r.avatarUrl}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-lg text-black/50">👤</span>
-                      )}
-                    </div>
+                          {/* Right side: score */}
+                          <div className="ml-3 flex shrink-0 items-center gap-1.5">
+                            <span>🏆</span>
+                            <div
+                              className="text-[13px] font-extrabold tabular-nums"
+                              style={{ color: "#d76a1f", textShadow: "0 1px 0 rgba(255,255,255,.8)" }}
+                            >
+                              {fmt(typeof r.amount === "number" ? r.amount : r.wins)}
+                            </div>
+                          </div>
 
-                    {/* Name */}
-                    <div className="min-w-0">
-                      <div
-                        className={`truncate text-[13px] font-semibold ${
-                          isSelf ? "text-emerald-300" : "text-white"
-                        }`}
-                      >
-                        {isSelf ? "You" : r.name || r.userId.slice(0, 6)}
-                      </div>
-                      <div className="text-[10px] text-white/70">
-                        ID: {r.userId.slice(0, 6)}
-                      </div>
-                    </div>
+                          {/* Self highlight */}
+                          {isSelf && (
+                            <div className="pointer-events-none absolute inset-0 rounded-[14px] ring-2 ring-emerald-500/80" />
+                          )}
+                        </motion.div>
+                      );
+                    })}
                   </div>
+                )}
+              </div>
 
-                  {/* Right side: amount or wins */}
-                  <div className="ml-3 flex shrink-0 items-center gap-1.5">
-                    <CoinIcon className="h-4 w-4" />
-                    {typeof r.amount === "number" ? (
-                      <div className="text-[13px] font-extrabold tabular-nums">
-                        {fmt(r.amount)}
-                      </div>
-                    ) : (
-                      <div className="text-[13px] font-extrabold tabular-nums">
-                        {fmt(r.wins)}
-                      </div>
-                    )}
-                  </div>
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2 px-4 pb-3">
+                {onStartNow && (
+                  <motion.button
+                    type="button"
+                    onClick={onStartNow}
+                    whileTap={{ scale: 0.98 }}
+                    className="rounded-[12px] px-4 py-2 text-sm font-bold text-white shadow"
+                    style={{
+                      background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 100%)",
+                      boxShadow: "inset 0 2px 0 rgba(255,255,255,.5), 0 6px 14px rgba(19,62,112,.35)",
+                      border: "1px solid rgba(35,121,201,.6)",
+                    }}
+                  >
+                    START NOW
+                  </motion.button>
+                )}
+              </div>
+            </div>
 
-                  {/* Row highlight for self */}
-                  {isSelf && (
-                    <div className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-emerald-500/80" />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Bottom actions */}
-        <div className="flex items-center justify-between gap-2 px-4 pb-4">
-          <div />
-          <div className="flex gap-2">
-            {onStartNow && (
-              <button
-                type="button"
-                onClick={onStartNow}
-                className="rounded-xl border border-white/25 bg-fuchsia-500/30 px-4 py-2 text-sm font-semibold shadow hover:bg-fuchsia-500/40"
-              >
-                Start Now
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+            {/* Close button */}
+            <motion.button
+              onClick={onClose}
+              aria-label="Close"
+              whileTap={{ scale: 0.95 }}
+              className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full text-white shadow"
+              style={{
+                background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 100%)",
+                boxShadow: "inset 0 2px 0 rgba(255,255,255,.5), 0 6px 12px rgba(0,0,0,.25)",
+                border: "1px solid rgba(35,121,201,.6)",
+              }}
+            >
+              ✕
+            </motion.button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
-/** Small coin glyph for the right-side amount */
-function CoinIcon({ className }: { className?: string }) {
+/* ================= Twisted Ribbon (blue) ================= */
+
+function RibbonBlue() {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden
-      fill="none"
-      stroke="currentColor"
-    >
-      <defs>
-        <radialGradient id="g" cx="35%" cy="30%" r="80%">
-          <stop offset="0%" stopColor="#fff7cc" />
-          <stop offset="55%" stopColor="#ffd24f" />
-          <stop offset="100%" stopColor="#e6a400" />
-        </radialGradient>
-      </defs>
-      <circle cx="12" cy="12" r="10" fill="url(#g)" stroke="rgba(0,0,0,.25)" />
-      <circle cx="12" cy="12" r="7.5" fill="none" stroke="rgba(0,0,0,.25)" />
-      <path d="M9.5 9h5M8.5 12h7M9.5 15h5" stroke="rgba(0,0,0,.35)" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
+    <div className="relative flex justify-center">
+      {/* Left tail */}
+      <div
+        className="absolute -left-10 top-1/2 h-8 w-10 -translate-y-1/2 rotate-[-12deg] rounded-l-md"
+        style={{
+          background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 100%)",
+          boxShadow: "-4px 4px 0 rgba(0,0,0,.15)",
+        }}
+      />
+      {/* Right tail */}
+      <div
+        className="absolute -right-10 top-1/2 h-8 w-10 -translate-y-1/2 rotate-[12deg] rounded-r-md"
+        style={{
+          background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 100%)",
+          boxShadow: "4px 4px 0 rgba(0,0,0,.15)",
+        }}
+      />
+      {/* Ribbon body */}
+      <div
+        className="relative min-w-[230px] rounded-[18px] px-8 py-2 text-center text-[20px] font-extrabold tracking-wide text-white"
+        style={{
+          background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 60%, #1b5d9c 100%)",
+          textShadow: "0 1px 0 rgba(0,0,0,.25)",
+          boxShadow: "0 6px 12px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.6)",
+          border: "2px solid rgba(255,255,255,.5)",
+        }}
+      >
+        LEADERBOARD
+      </div>
+    </div>
   );
 }

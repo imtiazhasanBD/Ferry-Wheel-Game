@@ -1,55 +1,158 @@
-const Record = ({ open, onClose }: { open: boolean, onClose: () => void }) => {
-    if (!open) return null; // If not open, return null to hide
+import { AnimatePresence, motion } from "framer-motion";
 
-    return (
-        <div className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm">
-            <div
-                className="relative w-[92%] max-w-md rounded-3xl text-white shadow-[0_24px_80px_rgba(0,0,0,.6)] pointer-events-auto"
-                style={{
-                    background:
-                        "linear-gradient(180deg, #8a2be2 0%, #7a27dc 30%, #5a1fcf 70%, #4317c2 100%)",
-                    /*           border: "4px solid #ff9f1a", */
-                    boxShadow: "0 0 0 3px rgba(255,159,26,.25) inset, 0 16px 40px rgba(0,0,0,.45)",
-                }}
-            >
-                {/* Close Button */}
-                <button
-                    type="button"
-                    onClick={onClose}
-                    className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white/90 hover:bg-white/25"
-                    aria-label="Close"
-                >
-                    ✕
-                </button>
+const rows = [
+  { time: "12:30 PM", bet: 1000, result: "🍕 Pizza", win: +1500 },
+  { time: "1:15 PM", bet: 2000, result: "🍎 Apple", win: -2000 },
+  { time: "2:00 PM", bet: 500,  result: "🍌 Banana", win: +750  },
+  { time: "3:45 PM", bet: 1500, result: "🍇 Grapes", win: -1500 },
+  { time: "4:10 PM", bet: 2500, result: "🍒 Cherry", win: +5000 },
+];
 
-                {/* Content */}
-                <div className="px-2 py-10">
-                    <h2 className="text-center text-lg font-bold">Record</h2>
-                    <div className="mt-4 text-sm text-white/80">
-                        <table className="w-full table-auto border-collapse">
-                            <thead>
-                                <tr>
-                                    <th className="px-4 py-2 text-left">Time</th>
-                                    <th className="px-4 py-2 text-left">Bet</th>
-                                    <th className="px-4 py-2 text-left">Result</th>
-                                    <th className="px-4 py-2 text-left">Win</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {/* Example Record */}
-                                <tr>
-                                    <td className="px-4 py-2">12:30 PM</td>
-                                    <td className="px-4 py-2">1000 Coins</td>
-                                    <td className="px-4 py-2">Pizza</td>
-                                    <td className="px-4 py-2">1500 Coins</td>
-                                </tr>
-                                {/* Add more records as needed */}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+const fmt = (n: number) => n.toLocaleString();
+
+export default function Record({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          {/* Dialog card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 14 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 6 }}
+            transition={{ type: "spring", stiffness: 220, damping: 22 }}
+            className="relative w-[92%] max-w-md rounded-3xl text-white pointer-events-auto"
+            style={{
+              background:
+                "linear-gradient(180deg,#2379c9 0%, #1f6bb4 40%, #1b5d9c 75%, #154b7e 100%)",
+              border: "4px solid rgba(255,255,255,.15)",
+              boxShadow:
+                "0 0 0 6px rgba(35,121,201,.35) inset, 0 16px 40px rgba(0,0,0,.45)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Twisted Ribbon */}
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2">
+              <motion.div
+                initial={{ y: -16, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.05 }}
+              >
+                <RibbonBlueTwisted>RECORD</RibbonBlueTwisted>
+              </motion.div>
             </div>
-        </div>
-    );
-};
-export default Record
+
+            {/* Close Button */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              type="button"
+              onClick={onClose}
+              className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white/90 hover:bg-white/25"
+              aria-label="Close"
+            >
+              ✕
+            </motion.button>
+
+            {/* Content */}
+            <div className="px-4 pt-12 pb-6">
+              {/* Header */}
+              <div
+                className="grid grid-cols-4 gap-2 sticky top-0 px-3 py-2 text-xs font-semibold uppercase tracking-wide rounded-lg"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,.12) 0%, rgba(255,255,255,.06) 100%)",
+                  color: "rgba(240,248,255,.9)",
+                  boxShadow: "inset 0 -1px 0 rgba(35,121,201,.35)",
+                }}
+              >
+                <span>Time</span>
+                <span>Bet</span>
+                <span>Result</span>
+                <span>Win</span>
+              </div>
+
+              {/* Rows */}
+              <div className="mt-2 max-h-[52vh] overflow-y-auto space-y-2 pr-1">
+                {rows.map((r, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -18 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.12 + i * 0.05 }}
+                    className="grid grid-cols-4 gap-2 px-3 py-3 text-[12px] rounded-lg"
+                    style={{
+                      // no white bg: deep blue glassy pills
+                      background:
+                        "linear-gradient(180deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.04) 100%)",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,.25), 0 6px 14px rgba(19,62,112,.25)",
+                      border: "1px solid rgba(35,121,201,.35)",
+                    }}
+                  >
+                    <span className="text-white/85">{r.time}</span>
+                    <span className="text-white">{fmt(r.bet)}</span>
+                    <span className="truncate text-white">{r.result}</span>
+                    <span
+                      className={`${r.win >= 0 ? "text-emerald-400" : "text-rose-400"} font-semibold`}
+                    >
+                      {r.win >= 0 ? `+${fmt(r.win)}` : `${fmt(r.win)}`}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ===== Twisted Ribbon (blue) ===== */
+
+function RibbonBlueTwisted({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative flex justify-center">
+      {/* Left tail */}
+      <div
+        className="absolute -left-10 top-1/2 h-8 w-10 -translate-y-1/2 rotate-[-12deg] rounded-l-md"
+        style={{
+          background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 100%)",
+          boxShadow: "-4px 4px 0 rgba(0,0,0,.15)",
+        }}
+      />
+      {/* Right tail */}
+      <div
+        className="absolute -right-10 top-1/2 h-8 w-10 -translate-y-1/2 rotate-[12deg] rounded-r-md"
+        style={{
+          background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 100%)",
+          boxShadow: "4px 4px 0 rgba(0,0,0,.15)",
+        }}
+      />
+      {/* Body */}
+      <div
+        className="relative min-w-[200px] rounded-[16px] px-6 py-1.5 text-center text-[18px] font-extrabold tracking-wide text-white"
+        style={{
+          background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 60%, #1b5d9c 100%)",
+          textShadow: "0 1px 0 rgba(0,0,0,.25)",
+          boxShadow: "0 6px 12px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.6)",
+          border: "2px solid rgba(255,255,255,.5)",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}

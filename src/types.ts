@@ -1,5 +1,13 @@
-export const FRUITS = [
-    "cherry", "lemon", "grape", "watermelon", "apple", "pineapple", "blueberry", "strawberry"
+export const FOODS = [
+  "meat",
+  "tomato",
+  "corn",
+  "sausage",
+  "lettuce",
+  "carrot",
+  "skewer",
+  "ham",
 ] as const;
-export type FruitKey = typeof FRUITS[number];
+
+export type FoodsKey = typeof FOODS[number];
 export type RoundState = "betting" | "revealing" | "pause";

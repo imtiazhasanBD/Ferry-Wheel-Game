@@ -1,6 +1,6 @@
 // useGame.local.ts
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FRUITS, type FruitKey } from "./types";
+import { FOODS, type FoodsKey } from "./types";
 
 /** ======= Local “backend” config ======= */
 const STORAGE_USER_KEY = "wheel.local.user.v1";
@@ -12,14 +12,14 @@ type RoundPublic = {
   roundId: string;
   state: RoundState;
   timeLeftMs: number;
-  winner?: FruitKey;
+  winner?: FoodsKey;
   blockRound?: number; // 1..10
 };
 
 type BetEcho = {
   betId: string;
   userId: string;
-  fruit: FruitKey;
+  fruit: FoodsKey;
   value: number;
   roundId: string;
 };
@@ -46,7 +46,7 @@ const uid = (() => {
   return () => {
     try {
       if (globalThis?.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-    } catch {}
+    } catch { }
     const t = Date.now().toString(36);
     const r = Math.random().toString(36).slice(2, 10);
     return `id-${t}-${r}-${i++}`;
@@ -55,8 +55,8 @@ const uid = (() => {
 
 
 const BETTING_MS = 10_000;   // matches your UI’s 10s progress bar
-const REVEAL_MS  = 1_400;
-const PAUSE_MS   = 800;
+const REVEAL_MS = 1_400;
+const PAUSE_MS = 800;
 
 /** Small helpers */
 const now = () => Date.now();
@@ -79,13 +79,13 @@ function loadUser(): LocalUser {
         loss: typeof u.loss === "number" ? u.loss : 0,
       };
     }
-  } catch {}
+  } catch { }
   return { ...DEFAULT_USER };
 }
 function saveUser(u: LocalUser) {
   try {
     localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(u));
-  } catch {}
+  } catch { }
 }
 
 /** Block round 1..10 for your leaderboard ribbon */
@@ -93,13 +93,13 @@ function loadBlockCounter(): number {
   try {
     const raw = localStorage.getItem(STORAGE_BLOCK_COUNTER);
     if (raw) return Number(raw) || 1;
-  } catch {}
+  } catch { }
   return 1;
 }
 function saveBlockCounter(n: number) {
   try {
     localStorage.setItem(STORAGE_BLOCK_COUNTER, String(n));
-  } catch {}
+  } catch { }
 }
 
 /** ============ The hook ============ */
@@ -127,9 +127,15 @@ export function useGame() {
   const phaseLenRef = useRef<number>(BETTING_MS);
 
   // ----- live state for current-round bets -----
-  const currentBetsRef = useRef<Record<FruitKey, number>>({
-    cherry: 0, lemon: 0, grape: 0, watermelon: 0,
-    apple: 0, pineapple: 0, blueberry: 0, strawberry: 0,
+  const currentBetsRef = useRef<Record<FoodsKey, number>>({
+    meat: 0,
+    tomato: 0,
+    corn: 0,
+    sausage: 0,
+    lettuce: 0,
+    carrot: 0,
+    skewer: 0,
+    ham: 0,
   });
 
   // ----- echo queue for your animations -----
@@ -143,7 +149,7 @@ export function useGame() {
     if (round.state !== "betting") return;
     // ~50% chance per second that somebody throws a tiny bet
     if (Math.random() < 0.5) {
-      const fruit = pickRandom(FRUITS);
+      const fruit = pickRandom(FOODS);
       const value = pickRandom([1000, 2000, 5000]);
       const betId = uid();
       setEchoQueue((q) => [...q, { betId, userId: "npc", fruit, value, roundId: round.roundId }]);
@@ -158,8 +164,8 @@ export function useGame() {
 
     phaseStartedAtRef.current = now();
     phaseLenRef.current = round.state === "betting" ? BETTING_MS
-                         : round.state === "revealing" ? REVEAL_MS
-                         : PAUSE_MS;
+      : round.state === "revealing" ? REVEAL_MS
+        : PAUSE_MS;
 
     timerRef.current = window.setInterval(() => {
       const elapsed = now() - phaseStartedAtRef.current;
@@ -219,8 +225,14 @@ export function useGame() {
 
       // clear current-round bets
       betsRef.current = {
-        cherry: 0, lemon: 0, grape: 0, watermelon: 0,
-        apple: 0, pineapple: 0, blueberry: 0, strawberry: 0,
+        meat: 0,
+        tomato: 0,
+        corn: 0,
+        sausage: 0,
+        lettuce: 0,
+        carrot: 0,
+        skewer: 0,
+        ham: 0,
       };
 
       return { ...r, state: "pause", timeLeftMs: PAUSE_MS };
@@ -239,23 +251,23 @@ export function useGame() {
   };
 
   /** Winner table (same as your UI multipliers) */
-  const MULTIPLIER: Record<FruitKey, number> = {
-    apple: 5,
-    lemon: 5,
-    blueberry: 10,
-    watermelon: 5,
-    grape: 15,
-    strawberry: 45,
-    pineapple: 25,
-    cherry: 10,
+  const MULTIPLIER: Record<FoodsKey, number> = {
+    meat: 45,
+    tomato: 5,
+    corn: 5,
+    sausage: 10,
+    lettuce: 5,
+    carrot: 5,
+    skewer: 15,
+    ham: 25,
   };
 
   /** Deterministic(ish) winner choice to feel stable across UI */
-  const chooseWinner = (seed: string): FruitKey => {
+  const chooseWinner = (seed: string): FoodsKey => {
     let h = 2166136261;
     for (let i = 0; i < seed.length; i++) h = (h ^ seed.charCodeAt(i)) * 16777619;
-    const idx = (h >>> 0) % FRUITS.length;
-    return FRUITS[idx];
+    const idx = (h >>> 0) % FOODS.length;
+    return FOODS[idx];
   };
 
   const bumpBlockRound = (cur: number) => {
@@ -266,7 +278,7 @@ export function useGame() {
 
   /** ========== API expected by your component ========== */
 
-  const placeBet = useCallback(async (fruit: FruitKey, value: number) => {
+  const placeBet = useCallback(async (fruit: FoodsKey, value: number) => {
     // require betting window
     if (round.state !== "betting") return;
 
@@ -325,7 +337,7 @@ export function useGame() {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_LAST_ROUND_AT, String(Date.now()));
-    } catch {}
+    } catch { }
   }, [round.roundId]);
 
   /** Hook return (shape matches your current backend hook closely) */
