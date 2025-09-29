@@ -54,9 +54,9 @@ const uid = (() => {
 })();
 
 
-const BETTING_MS = 10_000;   // matches your UI’s 10s progress bar
-const REVEAL_MS = 1_400;
-const PAUSE_MS = 800;
+const BETTING_MS = 30_000;   // matches your UI’s 10s progress bar
+const REVEAL_MS = 6_000;
+const PAUSE_MS = 3_000;
 
 /** Small helpers */
 const now = () => Date.now();

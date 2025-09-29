@@ -9600,14 +9600,14 @@ export default function App() {
   }
 
   const [userBets, setUserBets] = useState<Record<FoodsKey, number>>({
-     meat: 0,
-  tomato: 0,
-  corn: 0,
-  sausage: 0,
-  lettuce: 0,
-  carrot: 0,
-  skewer: 0,
-  ham: 0,
+    meat: 0,
+    tomato: 0,
+    corn: 0,
+    sausage: 0,
+    lettuce: 0,
+    carrot: 0,
+    skewer: 0,
+    ham: 0,
   });
 
   // ——— Refs
@@ -10082,14 +10082,14 @@ export default function App() {
 
   const counts = useMemo(() => {
     const m: Record<FoodsKey, number> = {
-    meat: 0,
-  tomato: 0,
-  corn: 0,
-  sausage: 0,
-  lettuce: 0,
-  carrot: 0,
-  skewer: 0,
-  ham: 0,
+      meat: 0,
+      tomato: 0,
+      corn: 0,
+      sausage: 0,
+      lettuce: 0,
+      carrot: 0,
+      skewer: 0,
+      ham: 0,
     };
     for (const c of stacked) m[c.fruit] += 1;
     return m;
@@ -10158,14 +10158,14 @@ export default function App() {
     if (round?.state === "revealing") {
       // Reset all bets to 0
       setUserBets({
-  meat: 0,
-  tomato: 0,
-  corn: 0,
-  sausage: 0,
-  lettuce: 0,
-  carrot: 0,
-  skewer: 0,
-  ham: 0,
+        meat: 0,
+        tomato: 0,
+        corn: 0,
+        sausage: 0,
+        lettuce: 0,
+        carrot: 0,
+        skewer: 0,
+        ham: 0,
       });
     }
   }, [round?.state]);
@@ -10552,7 +10552,7 @@ export default function App() {
                   Total 400k
                 </div>
                 <div className="bg-[#0864b4] text-white text-[10px] font-bold px-1 rounded-md  -bottom-2 shadow absolute z-30">
-                  3.45x
+                  4.37x
                 </div>
                 <svg viewBox="0 0 420 180" className="w-[60px] h-[40px] text-yellow-400  border-orange-500 absolute ml-20 z-20 mt-3">
 
@@ -10601,7 +10601,7 @@ export default function App() {
                   Total 100k
                 </div>
                 <div className="bg-[#0864b4] text-white text-[9px] font-bold px-1 rounded-md -mr-3 -bottom-2 shadow absolute z-30">
-                  3.45x
+                  1.25x
                 </div>
                 <svg viewBox="0 0 420 180" className="w-[60px] h-[40px] text-green-400  border-green-600 absolute mr-22 z-20 -scale-x-100 mt-2">
 
