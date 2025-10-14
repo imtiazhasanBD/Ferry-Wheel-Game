@@ -1,11 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 
 const rows = [
-  { time: "12:30 PM", bet: 1000, result: "🍕 Pizza", win: +1500 },
-  { time: "1:15 PM", bet: 2000, result: "🍎 Apple", win: -2000 },
-  { time: "2:00 PM", bet: 500,  result: "🍌 Banana", win: +750  },
-  { time: "3:45 PM", bet: 1500, result: "🍇 Grapes", win: -1500 },
-  { time: "4:10 PM", bet: 2500, result: "🍒 Cherry", win: +5000 },
+  { time: "1:15 PM", bet: 2000, result: "🍎", win: -2000 },
+  { time: "2:00 PM", bet: 500,  result: "🍋", win: +750  },
+  { time: "3:45 PM", bet: 1500, result: "🍉", win: -1500 },
 ];
 
 const fmt = (n: number) => n.toLocaleString();
