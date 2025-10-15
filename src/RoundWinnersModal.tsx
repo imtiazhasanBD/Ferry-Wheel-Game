@@ -26,7 +26,7 @@ export default function RoundWinnersModal({
 }) {
   const top = entries.slice(0, 3);
   const me = entries.find(e => e.userId === meId) ?? { userId: meId ?? "me", name: "Harper Clark", bet: 0, win: 0 };
-
+console.log("entriessssssssssssssssssssssssssssssssssss",entries)
   return (
     <AnimatePresence>
       {open && (
