@@ -9,3 +9,14 @@
   0%,100% { transform: scale(1); } 
   50% { transform: scale(1.12); } 
 }
+
+
+/* In your global CSS file */
+.no-scrollbar::-webkit-scrollbar {
+    display: none; /* For Chrome, Safari, and Opera */
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none; /* For IE and Edge */
+    scrollbar-width: none; /* For Firefox */
+}
