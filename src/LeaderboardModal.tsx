@@ -30,9 +30,9 @@ export default function LeaderboardModal({
       {open && (
         <motion.div
           className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          // initial={{ opacity: 0 }}
+          // animate={{ opacity: 1 }}
+          // exit={{ opacity: 0 }}
           onClick={onClose}
         >
           {/* Card container (click stop) */}
@@ -94,9 +94,9 @@ export default function LeaderboardModal({
                       return (
                         <motion.div
                           key={r.userId + i}
-                          initial={{ opacity: 0, x: -18 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.12 + i * 0.05 }}
+                          // initial={{ opacity: 0, x: -18 }}
+                          // animate={{ opacity: 1, x: 0 }}
+                          // transition={{ delay: 0.12 + i * 0.05 }}
                           className="relative flex items-center justify-between rounded-[14px] px-3 py-2.5"
                           style={{
                             background: "linear-gradient(180deg,#eef7ff 0%, #e6f2ff 100%)",

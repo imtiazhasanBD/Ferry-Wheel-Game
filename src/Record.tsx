@@ -20,9 +20,9 @@ export default function Record({
       {open && (
         <motion.div
           className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          // initial={{ opacity: 0 }}
+          // animate={{ opacity: 1 }}
+          // exit={{ opacity: 0 }}
           onClick={onClose}
         >
           {/* Dialog card */}
@@ -54,7 +54,7 @@ export default function Record({
 
             {/* Close Button */}
             <motion.button
-              whileTap={{ scale: 0.95 }}
+              // whileTap={{ scale: 0.95 }}
               type="button"
               onClick={onClose}
               className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white/90 hover:bg-white/25"
@@ -86,9 +86,9 @@ export default function Record({
                 {rows.map((r, i) => (
                   <motion.div
                     key={i}
-                    initial={{ opacity: 0, x: -18 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.12 + i * 0.05 }}
+                    // initial={{ opacity: 0, x: -18 }}
+                    // animate={{ opacity: 1, x: 0 }}
+                    // transition={{ delay: 0.12 + i * 0.05 }}
                     className="grid grid-cols-4 gap-2 px-3 py-3 text-[12px] rounded-lg"
                     style={{
                       // no white bg: deep blue glassy pills

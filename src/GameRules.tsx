@@ -16,9 +16,9 @@ const GameRules = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
       {open && (
         <motion.div
           className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          // initial={{ opacity: 0 }}
+          // animate={{ opacity: 1 }}
+          // exit={{ opacity: 0 }}
           onClick={onClose}
         >
           {/* Card */}
@@ -50,8 +50,8 @@ const GameRules = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
 
             {/* Close Button */}
             <motion.button
-              whileTap={{ scale: 0.95 }}
-              type="button"
+              // whileTap={{ scale: 0.95 }}
+              // type="button"
               onClick={onClose}
               className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white/90 hover:bg-white/25"
               aria-label="Close"
@@ -65,9 +65,9 @@ const GameRules = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
                 {rules.map((rule, i) => (
                   <motion.li
                     key={i}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 + i * 0.05 }}
+                    // initial={{ opacity: 0, x: -20 }}
+                    // animate={{ opacity: 1, x: 0 }}
+                    // transition={{ delay: 0.1 + i * 0.05 }}
                   >
                     {rule}
                   </motion.li>

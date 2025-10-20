@@ -1817,6 +1817,618 @@
 
 
 
+// import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// import { FOODS, type FoodsKey } from "./types";
+// import { useSocket, emitAck } from "./socket";
+
+// /** ======= Local persistence keys ======= */
+// const STORAGE_USER_KEY = "wheel.local.user.v1";
+// const STORAGE_LAST_ROUND_AT = "wheel.local.lastRoundAt.v1";
+
+// /** ======= Types ======= */
+// type ServerRoundStatus = "betting" | "revealing" | "completed" | "revealed" | "Preparing...";
+
+// const API_BASE = "https://greedy.stallforest.com";
+// const getAuthToken = () => (typeof window !== "undefined" ? localStorage.getItem("auth_token") || "" : "");
+
+// export type RoundWinnerEntry = {
+//   userId: string;
+//   name: string;
+//   bet: number;
+//   win: number;
+// };
+// type ApiWinner = {
+//   userId: string;
+//   name?: string;
+//   amountWon?: number;
+//   bet?: number;
+//   win?: number;
+// };
+
+
+// export type BoxStat = {
+//   box: string;
+//   totalAmount: number;
+//   bettorsCount: number;
+//   multiplier: number;
+// };
+
+// export type RoundModel = {
+//   // server ids & numbering
+//   roundId?: string;
+//   _id?: string;
+//   roundNumber?: string | number;
+
+//   // server status; we'll also expose a client-friendly `status`
+//   roundStatus: ServerRoundStatus;
+//   status?: "OPEN" | "CLOSED" | "SETTLED" | "Preparing..."; // <- for App.tsx
+
+//   // clocks
+//   timeLeftMs: number;
+//   startTime?: string | number;
+//   endTime?: string | number;
+//   revealTime?: string | number;
+//   prepareTime?: string | number;
+
+//   // misc
+//   winningBox?: string;
+//   boxStats?: BoxStat[];
+//   totalPool?: number;
+//   companyCut?: number;
+//   distributedAmount?: number;
+//   reserveWallet?: number;
+// };
+
+// export type BetEcho = {
+//   betId: string;
+//   userId: string;
+//   fruit: FoodsKey;
+//   value: number;
+//   roundId?: string;
+// };
+
+// export type LocalUser = {
+//   id: string;
+//   name: string;
+//   balance: number;
+//   profit: number;
+//   loss: number;
+// };
+
+// const DEFAULT_USER: LocalUser = {
+//   id: "me",
+//   name: "You",
+//   balance: 200_000,
+//   profit: 0,
+//   loss: 0,
+// };
+
+// export type ApiHistoryItem = {
+//   _id: string;
+//   userId: string;
+//   roundId: string;
+//   box: string;
+//   amount: number;
+//   createdAt: string;
+//   updatedAt: string;
+// };
+
+// type Settings = {
+//   beetingDuration: number;
+//   prepareDuration: number;
+//   revealDuration: number;
+//   _id: string;
+//   siteName: string;
+//   currency: string;
+//   minBet: number;
+//   maxBet: number;
+//   roundDuration: number;
+//   commissionRate: number;
+//   chips: number[];
+//   maintenanceMode: boolean;
+//   supportedLanguages: string[];
+//   theme: string;
+//   boxes: BoxStat[];
+//   createdAt: string; // ISO string
+//   updatedAt: string; // ISO string
+//   __v: number;
+// };
+
+
+// /** ======= Small helpers ======= */
+// const uid = (() => {
+//   let i = 0;
+//   return () => {
+//     try {
+//       if (globalThis?.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+//     } catch { }
+//     const t = Date.now().toString(36);
+//     const r = Math.random().toString(36).slice(2, 10);
+//     return `id-${t}-${r}-${i++}`;
+//   };
+// })();
+
+// function loadUser(): LocalUser {
+//   try {
+//     const raw = localStorage.getItem(STORAGE_USER_KEY);
+//     if (raw) {
+//       const u = JSON.parse(raw) as Partial<LocalUser>;
+//       return {
+//         id: u.id ?? "me",
+//         name: u.name ?? "You",
+//         balance: typeof u.balance === "number" ? u.balance : 200_000,
+//         profit: typeof u.profit === "number" ? u.profit : 0,
+//         loss: typeof u.loss === "number" ? u.loss : 0,
+//       };
+//     }
+//   } catch { }
+//   return { ...DEFAULT_USER };
+// }
+// function saveUser(u: LocalUser) {
+//   try {
+//     localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(u));
+//   } catch { }
+// }
+
+// /** A safe initial round */
+// const INITIAL_ROUND: RoundModel = {
+//   roundStatus: "Preparing...",
+//   status: "Preparing...",
+//   timeLeftMs: 0,
+// };
+
+// /** ======= time helpers (use start/end/reveal times) ======= */
+// const now = () => Date.now();
+// const parseTs = (v?: string | number) => (typeof v === "number" ? v : v ? Date.parse(v) : 0);
+
+// function serverToClientStatus(s?: ServerRoundStatus): RoundModel["status"] {
+//   switch (s) {
+//     case "betting":
+//       return "OPEN";
+//     case "revealing":
+//       return "CLOSED"; // spinning/reveal phase for the UI
+//     case "completed":
+//     case "revealed":
+//       return "SETTLED";
+//     case "Preparing...":
+//     default:
+//       return "Preparing...";
+//   }
+// }
+
+// /** which timestamp should we count down to, given the server status? */
+// function targetTsFor(d: Partial<RoundModel> & Record<string, any>) {
+//   const endTs = parseTs(d.endTime);
+//   const revTs = parseTs(d.revealTime);
+//   //const prepTs = parseTs(d.prepareTime);
+
+//   switch (d.roundStatus) {
+//     case "betting":
+//       return endTs; // time left to close betting
+//     case "revealing":
+//       // primary countdown to reveal; fallback to endTs if revealTime missing
+//       return revTs || endTs;
+//     case "completed":
+//     case "revealed":
+//       // round is done; if you want an intermission countdown, use `prepareTime`
+//       return 0; // or: return prepTs;
+//     default:
+//       return 0;
+//   }
+// }
+
+// function normalizeIncomingRound(patch: any, prev?: RoundModel): RoundModel {
+//   const roundId = patch._id || patch.roundId || prev?.roundId;
+//   const roundStatus: ServerRoundStatus = patch.roundStatus || prev?.roundStatus || "Preparing...";
+//   const status = serverToClientStatus(roundStatus);
+
+//   const merged: RoundModel = {
+//     ...(prev || INITIAL_ROUND),
+//     ...patch,
+//     roundId,
+//     roundStatus,
+//     status,
+//   };
+
+//   const target = targetTsFor(merged);
+//   const left = Math.max(0, target - now());
+
+//   return {
+//     ...merged,
+//     timeLeftMs: left,
+//   };
+// }
+
+// /** ======= The hook (socket-driven) ======= */
+// export function useGame() {
+//   const socket = useSocket();
+
+//   // ----- user & simple app state -----
+//   const [user, setUser] = useState<LocalUser>(() => loadUser());
+//   const [round, setRound] = useState<RoundModel>(INITIAL_ROUND);
+//   const [balance, setBalance] = useState<number>(0);
+//   const [sid, setSid] = useState<string | null>(null);
+//   const [totalUsers, setTotalUsers] = useState(0);
+//   const [myBetTotal, setMyBetTotal] = useState(0);
+//   const [companyWallet, setCompanyWallet] = useState(0);
+//   const [time, setTime] = useState(0); // mirrors round.timeLeftMs if you want separate
+//   const [setting, setSetting ] = useState<Settings | null>()
+
+
+//   const currentRoundId = round?._id ?? (round as any)?.roundId ?? null;
+//   const winnersCache = useRef<Map<string, RoundWinnerEntry[]>>(new Map());
+
+//   // ----- echo queue (for animations) -----
+//   const [echoQueue, setEchoQueue] = useState<BetEcho[]>([]);
+//   const shiftEcho = useCallback(() => {
+//     setEchoQueue((q) => q.slice(1));
+//   }, []);
+
+//   const setUserPersist = useCallback((updater: (u: LocalUser) => LocalUser) => {
+//     setUser((prev) => {
+//       const next = updater(prev);
+//       saveUser(next);
+//       return next;
+//     });
+//   }, []);
+
+//   useMemo(() => new Set(FOODS), []);
+
+//   /** ---- ticker helpers (robust to React 18 StrictMode) ---- */
+//   const phaseIntervalRef = useRef<number | null>(null);
+//   const phaseEndRef = useRef<number>(0);
+
+//   const startTicker = useCallback(() => {
+//     if (phaseIntervalRef.current) clearInterval(phaseIntervalRef.current);
+//     phaseIntervalRef.current = window.setInterval(() => {
+//       if (!phaseEndRef.current) return;
+//       const left = Math.max(0, phaseEndRef.current - Date.now());
+//       setRound((r) => ({ ...r, timeLeftMs: left }));
+//       setTime(left);
+//       if (left <= 0 && phaseIntervalRef.current) {
+//         clearInterval(phaseIntervalRef.current);
+//         phaseIntervalRef.current = null;
+//       }
+//     }, 1000) as unknown as number;
+//   }, []);
+
+//   const stopTicker = useCallback(() => {
+//     if (phaseIntervalRef.current) {
+//       clearInterval(phaseIntervalRef.current);
+//       phaseIntervalRef.current = null;
+//     }
+//   }, []);
+
+//   useEffect(() => () => stopTicker(), [stopTicker]); // cleanup on unmount
+
+//   /** ---- connect & initial balance ---- */
+//   useEffect(() => {
+//     if (!socket) return;
+
+//     const onConnect = () => {
+//       setSid(socket.id ?? null);
+//       socket.emit("join", { room: "table:alpha" }, () => { });
+//       socket.emit("get_balance", {}, (res: any) => {
+//         if (res?.success && typeof res.balance === "number") {
+//           setBalance(res.balance);
+//           setUserPersist((u) => ({ ...u, balance: res.balance }));
+//         }
+//       });
+//     };
+
+//     const onDisconnect = (_reason: string) => {
+//       setSid(null);
+//       // keep local UI; server will re-sync on reconnect
+//     };
+
+//     socket.on("connect", onConnect);
+//     socket.on("disconnect", onDisconnect);
+//     return () => {
+//       socket.off("connect", onConnect);
+//       socket.off("disconnect", onDisconnect);
+//     };
+//   }, [socket, setUserPersist]);
+
+//   /** ---- round lifecycle & timers (using start/end/reveal) ---- */
+//   useEffect(() => {
+//     if (!socket) return;
+
+//     let localPulseInterval: number | null = null;
+
+//     const upsert = (patch: any) => {
+//       setRound((prev) => {
+//         const next = normalizeIncomingRound(patch, prev);
+//         // update the ticking target
+//         const tgt = targetTsFor(next);
+//         phaseEndRef.current = tgt || 0;
+//         return next;
+//       });
+
+//       // ensure the ticker runs while we have a target
+//       const tgt = targetTsFor(patch);
+//       if (tgt) startTicker();
+//     };
+
+//     const onStart = (d: any) => upsert(d);
+//     const onUpdate = (d: any) => upsert(d);
+//     const onClosed = (d: any) => upsert(d);       // usually flips to "revealing"
+//     const onWinner = (d: any) => upsert(d);       // still in "revealing" typically
+//     const onEnded = (d: any) => {
+//       // fully done
+//       setRound((prev) => normalizeIncomingRound({ ...d, timeLeftMs: 0 }, prev));
+//       phaseEndRef.current = 0;
+//       stopTicker();
+//     };
+
+//     // lightweight phase tick from server (if you send periodic updates)
+//     const phaseUpdate = (d: any) => upsert(d);
+//     const pingServer = (d: any) => upsert(d);
+
+//     // bet accepted/down-balance
+//     const onAccepted = ({ bet }: any) => {
+//       const amt = bet?.amount || 0;
+//       setBalance((b) => Math.max(0, b - amt));
+//     };
+
+//     const onBalance = ({ balance }: any) => {
+//       if (typeof balance === "number") {
+//         setBalance(balance);
+//         setUserPersist((u) => ({ ...u, balance }));
+//       }
+//     };
+
+//     const onTotalUsersCount = ({ count }: any) => setTotalUsers(count);
+//     const onUserBetTotal = ({ totalUserBet }: any) => setMyBetTotal(totalUserBet);
+//     const onCompanyWallet = ({ wallet }: any) => setCompanyWallet(wallet);
+
+//     socket.on("roundStarted", onStart);
+//     socket.on("roundUpdated", onUpdate);
+//     socket.on("roundClosed", onClosed);
+//     socket.on("winnerRevealed", onWinner);
+//     socket.on("roundEnded", onEnded);
+//     socket.on("phaseUpdate", phaseUpdate);
+//     socket.on("ping_server", pingServer);
+
+//     socket.on("bet_accepted", onAccepted);
+//     socket.on("balanceUpdate", onBalance);
+//     socket.on("user_bet_total", onUserBetTotal);
+//     socket.on("joinedTotalUsers", onTotalUsersCount);
+//     socket.on("get_company_wallet", onCompanyWallet);
+
+//     return () => {
+//       socket.off("roundStarted", onStart);
+//       socket.off("roundUpdated", onUpdate);
+//       socket.off("roundClosed", onClosed);
+//       socket.off("winnerRevealed", onWinner);
+//       socket.off("roundEnded", onEnded);
+//       socket.off("phaseUpdate", phaseUpdate);
+//       socket.off("pingServer", pingServer);
+
+//       socket.off("bet_accepted", onAccepted);
+//       socket.off("balanceUpdate", onBalance);
+//       socket.off("user_bet_total", onUserBetTotal);
+//       socket.off("joinedTotalUsers", onTotalUsersCount);
+//       socket.off("get_company_wallet", onCompanyWallet);
+
+//       if (localPulseInterval) clearInterval(localPulseInterval);
+//       stopTicker();
+//     };
+//   }, [socket, startTicker, stopTicker]);
+
+//   /** ---- bootstrap static settings once (for Preparing state) ---- */
+//   useEffect(() => {
+//     if (!round.roundId && round.roundStatus === "Preparing...") {
+//       fetch(`${API_BASE}/api/v1/settings/retrive`)
+//         .then((res) => res.json())
+//         .then((data) => {
+
+//           setSetting(data.settings);
+
+//           if (data?.success && data?.settings?.boxes?.length) {
+//             const boxStats: BoxStat[] = data.settings.boxes.map((b: any) => ({
+//               box: b.title,
+//               totalAmount: 0,
+//               bettorsCount: 0,
+//               multiplier: b.multiplier,
+//             }));
+//             setRound((r) =>
+//               normalizeIncomingRound(
+//                 {
+//                   ...r,
+//                   roundNumber: "-",
+//                   roundStatus: "Preparing...",
+//                   boxStats,
+//                 },
+//                 r
+//               )
+//             );
+//           }
+//         })
+//         .catch(console.error);
+//     }
+//   }, [round.roundId, round.roundStatus]);
+
+
+//   /** ======= Winners APIs ======= */
+//   const getRoundWinners = useCallback(
+//     async (roundId?: string | number): Promise<RoundWinnerEntry[]> => {
+//       const rawId = roundId ?? currentRoundId;
+//       if (!rawId) throw new Error("No round id available to fetch winners.");
+
+//       const id = String(rawId);
+//       const cached = winnersCache.current.get(id);
+//       if (cached) return cached;
+
+//       const token = getAuthToken();
+//       const url = `${API_BASE}/api/v1/bettings/top-winners/${encodeURIComponent(id)}`;
+
+//       const res = await fetch(url, {
+//         headers: {
+//           Accept: "application/json",
+//           ...(token ? { Authorization: `Bearer ${token}` } : {}),
+//         },
+//       });
+//       if (!res.ok) {
+//         const text = await res.text().catch(() => "");
+//         throw new Error(`Failed to fetch winners (${res.status}): ${text || res.statusText}`);
+//       }
+
+//       const json = await res.json();
+
+//       // Your API shape:
+//       // {
+//       //   status: true,
+//       //   message: "...",
+//       //   count: 1,
+//       //   topWinners: [{ userId: "...", amountWon: 10000 }]
+//       // }
+//       const arr: ApiWinner[] = Array.isArray(json)
+//         ? json
+//         : json.topWinners ?? json.winners ?? json.data ?? [];
+
+//       const winners: RoundWinnerEntry[] = arr.map((w) => {
+//         const uid = String(w.userId);
+//         const win = Number(w.amountWon ?? w.win ?? 0);
+//         const bet = Number(w.bet ?? 0); // not provided by your API
+
+//         console.log("winnerrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr", totalUsers)
+//         return {
+//           userId: uid,
+//           name: w.name ?? `Player ${uid.slice(-4).toUpperCase()}`,
+//           bet,
+//           win,
+//         };
+//       });
+
+//       winnersCache.current.set(id, winners);
+//       return winners;
+//     },
+//     [currentRoundId]
+//   );
+
+//   const getCurrentHistory = useCallback(async (): Promise<ApiHistoryItem[]> => {
+//     const token = getAuthToken();
+
+//     const res = await fetch(`${API_BASE}/api/v1/bettings/current-history`, {
+//       headers: {
+//         Accept: "application/json",
+//         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+//       },
+//     });
+
+//     if (!res.ok) {
+//       const msg = await res.text().catch(() => "");
+//       throw new Error(`history ${res.status}: ${msg || res.statusText}`);
+//     }
+
+//     const json = await res.json();
+
+//     return Array.isArray(json?.bettingHistory) ? json.bettingHistory : [];
+//   }, []);
+
+//   /** ======= Betting API -> also push local echo for instant FX ======= */
+//   const placeBet = useCallback(
+//     async (fruit: FoodsKey, value: number) => {
+//       if (!socket) return;
+
+//       // allow only when server says betting
+//       if (round.roundStatus !== "betting") return;
+
+//       const amt = Math.max(50, Number(value) || 0);
+
+//       const res: any = await emitAck(socket as any, "place_bet", {
+//         roundId: (round as any)._id || round?.roundId,
+//         box: fruit.charAt(0).toUpperCase() + fruit.slice(1),
+//         amount: amt,
+//       });
+
+//       if (res && typeof res.balance === "number") {
+//         setBalance(res.balance);
+//         setUserPersist((u) => ({ ...u, balance: res.balance }));
+//       }
+
+//       // Optimistic local echo (server will usually echo too)
+//       const betId = uid();
+//       setEchoQueue((q) => [
+//         ...q,
+//         { betId, userId: user.id, fruit, value: amt, roundId: round.roundId },
+//       ]);
+//     },
+//     [socket, round.roundStatus, round.roundId, user.id, setUserPersist]
+//   );
+
+//   /** ======= credit & balance helpers ======= */
+//   const creditWin = useCallback(
+//     async (amount: number) => {
+//       if (amount <= 0) return;
+//       setBalance((b) => b + amount);
+//       setUserPersist((u) => ({ ...u, balance: u.balance + amount, profit: u.profit + amount }));
+//     },
+//     [setUserPersist]
+//   );
+
+//   const updateBalance = useCallback(
+//     (delta: number) => {
+//       if (!delta) return;
+//       setBalance((b) => b + delta);
+//       setUserPersist((u) => ({ ...u, balance: u.balance + delta }));
+//     },
+//     [setUserPersist]
+//   );
+
+//   /** Server drives next rounds; this just soft-resets UI if needed */
+//   const startNextRound = useCallback(() => {
+//     setRound((r) =>
+//       normalizeIncomingRound(
+//         { ...r, roundStatus: "Preparing...", status: "Preparing...", timeLeftMs: 0, winningBox: undefined },
+//         r
+//       )
+//     );
+//     phaseEndRef.current = 0;
+//     stopTicker();
+//   }, [stopTicker]);
+
+//   /** Auto-drain echo if something gets stuck */
+//   useEffect(() => {
+//     if (!echoQueue.length) return;
+//     const t = setTimeout(() => setEchoQueue((q) => q.slice(1)), 1800);
+//     return () => clearTimeout(t);
+//   }, [echoQueue]);
+
+//   /** remember last round timestamp (debug) */
+//   useEffect(() => {
+//     try {
+//       if (round.roundId) {
+//         localStorage.setItem(STORAGE_LAST_ROUND_AT, String(Date.now()));
+//       }
+//     } catch { }
+//   }, [round.roundId]);
+
+//   /** Expose everything you need in App.tsx */
+//   return {
+//     // core
+//     user,
+//     round,         // has .status ("OPEN" | "CLOSED" | "SETTLED"), timeLeftMs, start/end/reveal
+//     time,          // mirrors timeLeftMs for your progress calc
+//     placeBet,
+//     echoQueue,
+//     shiftEcho,
+//     creditWin,
+//     updateBalance,
+//     startNextRound,
+//     getRoundWinners,
+//     getCurrentHistory,
+
+//     // extras
+//     setting,
+//     balance,       // mirrors user.balance (pick one to display)
+//     sid,
+//     myBetTotal,    // your total bet this round
+//     companyWallet, // house reserve
+//   };
+// }
+
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FOODS, type FoodsKey } from "./types";
 import { useSocket, emitAck } from "./socket";
@@ -1836,13 +2448,6 @@ export type RoundWinnerEntry = {
   name: string;
   bet: number;
   win: number;
-};
-type ApiWinner = {
-  userId: string;
-  name?: string;
-  amountWon?: number;
-  bet?: number;
-  win?: number;
 };
 
 
@@ -1907,7 +2512,7 @@ export type ApiHistoryItem = {
   _id: string;
   userId: string;
   roundId: string;
-  box: string;
+winningBox: string;
   amount: number;
   createdAt: string;
   updatedAt: string;
@@ -2052,11 +2657,12 @@ export function useGame() {
   const [myBetTotal, setMyBetTotal] = useState(0);
   const [companyWallet, setCompanyWallet] = useState(0);
   const [time, setTime] = useState(0); // mirrors round.timeLeftMs if you want separate
-  const [setting, setSetting ] = useState<Settings | null>()
+  const [setting, setSetting] = useState<Settings | null>()
+  const [ping, setPing] = useState(0)
 
 
   const currentRoundId = round?._id ?? (round as any)?.roundId ?? null;
-  const winnersCache = useRef<Map<string, RoundWinnerEntry[]>>(new Map());
+ // const winnersCache = useRef<Map<string, RoundWinnerEntry[]>>(new Map());
 
   // ----- echo queue (for animations) -----
   const [echoQueue, setEchoQueue] = useState<BetEcho[]>([]);
@@ -2155,15 +2761,14 @@ export function useGame() {
     const onWinner = (d: any) => upsert(d);       // still in "revealing" typically
     const onEnded = (d: any) => {
       // fully done
-      setRound((prev) => normalizeIncomingRound({ ...d, timeLeftMs: 0 }, prev));
+      setRound((prev) => ({ ...d, prev }));
       phaseEndRef.current = 0;
       stopTicker();
     };
 
     // lightweight phase tick from server (if you send periodic updates)
     const phaseUpdate = (d: any) => upsert(d);
-    const pingServer = (d: any) => upsert(d);
-
+    const pingServer = (d: any) => setPing(d);
     // bet accepted/down-balance
     const onAccepted = ({ bet }: any) => {
       const amt = bet?.amount || 0;
@@ -2176,6 +2781,9 @@ export function useGame() {
         setUserPersist((u) => ({ ...u, balance }));
       }
     };
+
+
+
 
     const onTotalUsersCount = ({ count }: any) => setTotalUsers(count);
     const onUserBetTotal = ({ totalUserBet }: any) => setMyBetTotal(totalUserBet);
@@ -2202,7 +2810,7 @@ export function useGame() {
       socket.off("winnerRevealed", onWinner);
       socket.off("roundEnded", onEnded);
       socket.off("phaseUpdate", phaseUpdate);
-      socket.off("pingServer", pingServer);
+      socket.off("ping_server", pingServer);
 
       socket.off("bet_accepted", onAccepted);
       socket.off("balanceUpdate", onBalance);
@@ -2248,6 +2856,22 @@ export function useGame() {
     }
   }, [round.roundId, round.roundStatus]);
 
+  useEffect(() => {
+    if (!socket) return;
+
+    const updatePing = () => {
+      const start = Date.now();
+      socket.volatile.emit("ping_server", {}, () => {
+        const latency = Date.now() - start;
+        setPing(latency);
+      });
+    };
+
+    const interval = setInterval(updatePing, 2000); // every 2s
+    return () => clearInterval(interval);
+  }, [socket]);
+  console.log("pinggggggggggggggggggggggggggggggggggggggggggggggg", totalUsers)
+
 
   /** ======= Winners APIs ======= */
   const getRoundWinners = useCallback(
@@ -2256,8 +2880,6 @@ export function useGame() {
       if (!rawId) throw new Error("No round id available to fetch winners.");
 
       const id = String(rawId);
-      const cached = winnersCache.current.get(id);
-      if (cached) return cached;
 
       const token = getAuthToken();
       const url = `${API_BASE}/api/v1/bettings/top-winners/${encodeURIComponent(id)}`;
@@ -2282,7 +2904,7 @@ export function useGame() {
       //   count: 1,
       //   topWinners: [{ userId: "...", amountWon: 10000 }]
       // }
-      const arr: ApiWinner[] = Array.isArray(json)
+    /*   const arr: ApiWinner[] = Array.isArray(json)
         ? json
         : json.topWinners ?? json.winners ?? json.data ?? [];
 
@@ -2298,10 +2920,9 @@ export function useGame() {
           bet,
           win,
         };
-      });
+      }); */
 
-      winnersCache.current.set(id, winners);
-      return winners;
+      return json;
     },
     [currentRoundId]
   );
@@ -2324,7 +2945,7 @@ export function useGame() {
     const json = await res.json();
 
     return Array.isArray(json?.bettingHistory) ? json.bettingHistory : [];
-  }, []);
+  }, [round?.roundStatus === "revealed"]);
 
   /** ======= Betting API -> also push local echo for instant FX ======= */
   const placeBet = useCallback(
@@ -2424,6 +3045,7 @@ export function useGame() {
     balance,       // mirrors user.balance (pick one to display)
     sid,
     myBetTotal,    // your total bet this round
-    companyWallet, // house reserve
+    companyWallet,
+    ping // house reserve
   };
 }

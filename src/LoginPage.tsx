@@ -2,11 +2,10 @@ import { useState } from "react";
 
 type LoginResponse = {
   token: string;
-  user?: {
-    id?: string | number;
+    id?: number;
     name?: string;
     [k: string]: unknown;
-  };
+ 
   // add/adjust fields if your API returns more
 };
 
@@ -48,9 +47,9 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
           `Login failed (${res.status})`;
         throw new Error(message);
       }
-
       const data = (maybeJson ||
         (await res.json())) as LoginResponse;
+        console.log(data)
 
       // Save token (adjust key if your API uses a different field)
       if (data?.token) {
@@ -58,8 +57,8 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
       }
 
       // Optionally persist user info
-      if (data?.user) {
-        localStorage.setItem("auth_user", JSON.stringify(data.user));
+      if (data?.id != null) {
+        localStorage.setItem("user_id", String(data.id));
       }
 
       onLogin();
