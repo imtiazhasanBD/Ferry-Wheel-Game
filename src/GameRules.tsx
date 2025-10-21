@@ -25,7 +25,7 @@ const GameRules = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 14 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 6 }}
+           // exit={{ opacity: 0, scale: 0.97, y: 6 }}
             transition={{ type: "spring", stiffness: 220, damping: 22 }}
             className="relative w-[92%] max-w-md rounded-3xl text-white pointer-events-auto"
             style={{

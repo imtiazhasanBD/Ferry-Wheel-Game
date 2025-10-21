@@ -3,7 +3,9 @@ import { io, Socket } from "socket.io-client";
 
 
 const token =  localStorage.getItem("auth_token") ?? undefined;
-const WS_URL = "https://greedy.stallforest.com/game"
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+const WS_URL = `${API_BASE}/game`
+
 
 export function emitAck(socket: Socket, event: string, payload: unknown, timeoutMs = 6000) {
   return new Promise((resolve, reject) => {

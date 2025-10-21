@@ -332,7 +332,7 @@ const fmt = (n: number) =>
       : new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n);
 
 /* get emoji from your EMOJI map or a default */
-function getEmojiForBox(name?: string): string {
+export function getEmojiForBox(name?: string): string {
   if (!name) return "❓";
   const key = name.toLowerCase() as keyof typeof EMOJI;
   return EMOJI[key] ?? "🥗";
@@ -372,14 +372,14 @@ export default function RoundWinnersModal({
           className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+        //  exit={{ opacity: 0 }}
           onClick={onClose}
         >
           {/* Card */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 6 }}
+          //  exit={{ opacity: 0, scale: 0.97, y: 6 }}
             transition={{ type: "spring", stiffness: 220, damping: 22 }}
             onClick={(e) => e.stopPropagation()}
             className="relative w-[92%] max-w-sm rounded-[22px] text-white"
