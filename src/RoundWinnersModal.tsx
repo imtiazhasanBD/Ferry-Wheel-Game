@@ -440,7 +440,7 @@ export default function RoundWinnersModal({
               {/* Header Icons (fork – result – knife) */}
               <div className="flex items-center justify-center gap-6 text-2xl mb-2 select-none">
                 <span>🍴</span>
-                <div className="text-3xl">{emoji}</div>
+                <div className="text-5xl">{emoji}</div>
                 <span>🍴</span>
               </div>
 
@@ -452,7 +452,7 @@ export default function RoundWinnersModal({
                 </span>
                 &nbsp;'s Result:&nbsp;
                 <span className="inline-flex items-center gap-1">
-                  <span className="text-xl">{emoji}</span>
+                  <span className="text-2xl">{emoji}</span>
                   <span className="opacity-95 text-xl"><span>
                     {["Meat", "Sausage", "Skewer", "Ham"].some(item => data?.winningBox?.includes(item))
                       ? "🍕"
@@ -504,7 +504,7 @@ export default function RoundWinnersModal({
                     No winners this round
                   </div>
                 ) : (
-                  <div className="flex justify-between px-2">
+                  <div className="grid grid-cols-3 gap-2">
                     {top3.map((p, idx) => {
                       const place = idx + 1;
                       const crown = place === 1 ? "👑" : place === 2 ? "🥈" : "🥉";
