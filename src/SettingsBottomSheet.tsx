@@ -1,13 +1,13 @@
-import { useMemo, useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Volume2,  Music2, X } from "lucide-react";
+import { Volume2, Music2, X } from "lucide-react";
 
 export type Prefs = {
-  master: number;
+  master: number; // affects Bet/Reveal/Win only
   bet: number;
   reveal: number;
   win: number;
-  bg: number;
+  bg: number; // background music only
 };
 
 export default function SettingsDialog({
@@ -21,23 +21,17 @@ export default function SettingsDialog({
   prefs: Prefs;
   setPrefs: React.Dispatch<React.SetStateAction<Prefs>>;
 }) {
-  const othersValue = useMemo(
-    () => (prefs.bet + prefs.reveal + prefs.win + prefs.bg) / 4,
-    [prefs.bet, prefs.reveal, prefs.win, prefs.bg]
-  );
+  // Now "BG Music" is its own slider (no averaging)
+  const bgValue = useMemo(() => prefs.bg, [prefs.bg]);
 
   // Remember last non-zero values for mute toggles
   const prevMasterRef = useRef<number>(prefs.master || 1);
-  const prevOthersRef = useRef<Pick<Prefs, "bet" | "reveal" | "win" | "bg">>({
-    bet: prefs.bet || 1,
-    reveal: prefs.reveal || 1,
-    win: prefs.win || 1,
-    bg: prefs.bg || 1,
-  });
+  const prevBgRef = useRef<number>(prefs.bg || 1);
 
-  const setOthers = (v: number) =>
-    setPrefs((p) => ({ ...p, bet: v, reveal: v, win: v, bg: v }));
+  // Setters
+  const setBg = (v: number) => setPrefs((p) => ({ ...p, bg: v }));
 
+  // Master mute (affects SFX only in your mixer code)
   const toggleMasterMute = () =>
     setPrefs((p) => {
       if (p.master > 0) {
@@ -47,20 +41,14 @@ export default function SettingsDialog({
       return { ...p, master: prevMasterRef.current || 1 };
     });
 
-  const toggleOthersMute = () =>
+  // BG mute only
+  const toggleBgMute = () =>
     setPrefs((p) => {
-      const avg = (p.bet + p.reveal + p.win + p.bg) / 4;
-      if (avg > 0) {
-        prevOthersRef.current = {
-          bet: p.bet || 1,
-          reveal: p.reveal || 1,
-          win: p.win || 1,
-          bg: p.bg || 1,
-        };
-        return { ...p, bet: 0, reveal: 0, win: 0, bg: 0 };
+      if (p.bg > 0) {
+        prevBgRef.current = p.bg || 1;
+        return { ...p, bg: 0 };
       }
-      const prev = prevOthersRef.current;
-      return { ...p, bet: prev.bet || 1, reveal: prev.reveal || 1, win: prev.win || 1, bg: prev.bg || 1 };
+      return { ...p, bg: prevBgRef.current || 1 };
     });
 
   return (
@@ -82,9 +70,11 @@ export default function SettingsDialog({
             className="relative w-[92%] max-w-md rounded-3xl text-white pointer-events-auto"
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "linear-gradient(180deg,#2379c9 0%, #1f6bb4 40%, #1b5d9c 75%, #154b7e 100%)",
+              background:
+                "linear-gradient(180deg,#2379c9 0%, #1f6bb4 40%, #1b5d9c 75%, #154b7e 100%)",
               border: "4px solid rgba(255,255,255,.15)",
-              boxShadow: "0 0 0 6px rgba(35,121,201,.35) inset, 0 16px 40px rgba(0,0,0,.45)",
+              boxShadow:
+                "0 0 0 6px rgba(35,121,201,.35) inset, 0 16px 40px rgba(0,0,0,.45)",
             }}
           >
             {/* Ribbon */}
@@ -100,7 +90,6 @@ export default function SettingsDialog({
 
             {/* Header */}
             <div className="flex items-center justify-end px-4 py-3 border-b border-white/20">
-         {/*      <div className="text-[15px] font-bold">Settings</div> */}
               <button
                 className="grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white/90 hover:bg-white/25"
                 onClick={onClose}
@@ -112,30 +101,30 @@ export default function SettingsDialog({
 
             {/* Body */}
             <div className="px-4 py-5">
-              {/* Master */}
+              {/* Master (affects Bet/Reveal/Win only in the mixer) */}
               <div className="mt-1">
                 <SliderRow
-                  label="Master"
+                  label="Master (no BG)"
                   value={prefs.master}
                   onChange={(v) => setPrefs((p) => ({ ...p, master: v }))}
                   iconOn={<Volume2 size={18} />}
-    /*               iconOff={<Volume2 size={18} />} */
                   onToggleMute={toggleMasterMute}
                 />
+                <p className="mt-1 text-[11px] text-white/70">
+                  Controls Bet, Reveal, and Win. Background music is NOT affected.
+                </p>
               </div>
 
-              {/* Others */}
-              <div className="mt-3">
+              {/* BG Music only */}
+              <div className="mt-4">
                 <SliderRow
-                  label="Others"
-                  value={othersValue}
-                  onChange={(v) => setOthers(v)}
+                  label="BG Music"
+                  value={bgValue}
+                  onChange={setBg}
                   iconOn={<Music2 size={18} />}
-                  onToggleMute={toggleOthersMute}
+                  onToggleMute={toggleBgMute}
                 />
-                <p className="mt-2 text-[11px] text-white/70">
-                  Controls Bet, Reveal, Win, and BG Music together.
-                </p>
+                <p className="mt-2 text-[11px] text-white/70">Controls only Background Music.</p>
               </div>
             </div>
           </motion.div>
@@ -145,7 +134,7 @@ export default function SettingsDialog({
   );
 }
 
-/* ---------- Slider (fixed for touch + exact centering) ---------- */
+/* ---------- Slider ---------- */
 function SliderRow({
   label,
   value,
@@ -201,7 +190,7 @@ function SliderRow({
           )}
         </button>
 
-        {/* Range (blue theme: filled = #36a2ff, remainder = #0f355e) */}
+        {/* Range */}
         <input
           type="range"
           min={0}
@@ -217,7 +206,7 @@ function SliderRow({
         />
       </div>
 
-      {/* Robust thumb/track styling for Chrome/Firefox/Safari + touch */}
+      {/* Cross-browser thumb/track */}
       <style>{`
         input[type="range"] { -webkit-appearance: none; appearance: none; }
         input[type="range"] { height: 8px; border-radius: 9999px; }
@@ -227,13 +216,12 @@ function SliderRow({
         input[type="range"]::-moz-range-track {
           height: 8px; border-radius: 9999px; background: transparent;
         }
-        /* Thumb */
         input[type="range"]::-webkit-slider-thumb {
           -webkit-appearance: none; appearance: none;
           width: 20px; height: 20px; border-radius: 9999px;
           background: #ffd125;
           box-shadow: 0 0 0 2px rgba(0,0,0,.2), inset 0 -2px 0 rgba(0,0,0,.15);
-          cursor: pointer; margin-top: -6px; /* centers thumb on 8px track */
+          cursor: pointer; margin-top: -6px;
         }
         input[type="range"]::-moz-range-thumb {
           width: 20px; height: 20px; border-radius: 9999px;
@@ -241,14 +229,13 @@ function SliderRow({
           box-shadow: 0 0 0 2px rgba(0,0,0,.2), inset 0 -2px 0 rgba(0,0,0,.15);
           cursor: pointer;
         }
-        /* Improve touch behavior on mobile */
         input[type="range"] { touch-action: none; }
       `}</style>
     </div>
   );
 }
 
-/* ===== Reusable Ribbon (blue, twisted tails) ===== */
+/* ===== Ribbon (blue, twisted tails) ===== */
 function RibbonBlueTwisted({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative flex justify-center">

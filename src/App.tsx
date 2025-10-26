@@ -24,6 +24,7 @@ import LoginPage from "./LoginPage";
 import PingDisplay from "./components/PingDisplay";
 import TodayLeaderboardModal from "./TodayLeaderboardModal";
 import { useGetDailyWins } from "./hooks/getDailyWins";
+import { WheelStand } from "./components/ImageWheelStand";
 
 /** ==================== CONFIG ==================== **/
 const CHIPS = [1000, 2000, 5000, 10000, 50000] as const;
@@ -40,6 +41,19 @@ const SND_REVEAL =
 const SND_WIN = "/mixkit-ethereal-fairy-win-sound-2019.wav";
 const SND_BG_LOOP = "/background-music-minecraftgaming-405001.mp3";
 const PREFS_KEY = "soundPrefsWheelV1";
+
+// === Add these right below PREFS_KEY ===
+const DEFAULT_PREFS: Prefs = { master: 1, bet: 1, reveal: 1, win: 1, bg: 1 };
+
+const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+
+const normalizePrefs = (raw: any): Prefs => ({
+  master: clamp01(raw?.master ?? 1),
+  bet: clamp01(raw?.bet ?? 1),
+  reveal: clamp01(raw?.reveal ?? 1),
+  win: clamp01(raw?.win ?? 1),
+  bg: clamp01(raw?.bg ?? 1),
+});
 
 const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
 const resolveEventKey = (e: any) =>
@@ -145,7 +159,7 @@ export default function App() {
 
   // --- Cursor/highlight (replaces spinning) ---
   const [hlIndex, setHlIndex] = useState<number | null>(null);
-  const [hlColor, setHlColor] = useState<string>("#22c55e");
+  //const [hlColor, setHlColor] = useState<string>("#22c55e");
   const cursorIntervalRef = useRef<number | null>(null);
   const decelTimeoutRef = useRef<number | null>(null);
   const cursorRunningRef = useRef(false);
@@ -155,7 +169,7 @@ export default function App() {
   const SND_HOP = SND_REVEAL; // or SND_BET if you like that sound better
   round.winnerBox === "Pizza" || round.winnerBox === "Salad";
   const PLATFORM_KEYS = ["Pizza", "Salad"] as const;
-  const HL_COLORS = [
+  /*   const HL_COLORS = [
     "#22c55e",
     "#3b82f6",
     "#ef4444",
@@ -163,10 +177,10 @@ export default function App() {
     "#06b6d4",
     "#f59e0b",
     "#10b981",
-  ];
+  ]; */
 
   const [platIdx, setPlatIdx] = useState<number | null>(null); // 0=Pizza, 1=Salad, null=off
-  const [platColor, setPlatColor] = useState<string>("#22c55e");
+  //const [platColor, setPlatColor] = useState<string>("#22c55e");
 
   useEffect(() => {
     if (round?.roundStatus !== "revealing") {
@@ -179,7 +193,7 @@ export default function App() {
       setPlatIdx((prev) =>
         prev === null ? 0 : (prev + 1) % PLATFORM_KEYS.length
       );
-      setPlatColor(HL_COLORS[i % HL_COLORS.length]);
+      // setPlatColor(HL_COLORS[i % HL_COLORS.length]);
       i++;
       timer = window.setTimeout(hop, 90); // fast hops
     };
@@ -211,7 +225,7 @@ export default function App() {
     } catch {}
   }
 
-  const colorPalette = [
+  /*   const colorPalette = [
     "#22c55e", // green
     "#eab308", // yellow
     "#f97316", // orange
@@ -219,29 +233,27 @@ export default function App() {
     "#a855f7", // purple
     "#06b6d4", // cyan
     "#3b82f6", // blue
-  ];
-  const randColor = () =>
-    colorPalette[(Math.random() * colorPalette.length) | 0];
+  ]; */
+  /*  const randColor = () =>
+    colorPalette[(Math.random() * colorPalette.length) | 0]; */
 
   // near other refs
-const cursorTimeoutRef = useRef<number | null>(null);
+  const cursorTimeoutRef = useRef<number | null>(null);
 
-
-function clearCursorTimers() {
-  if (cursorIntervalRef.current) {
-    clearInterval(cursorIntervalRef.current);
-    cursorIntervalRef.current = null;
+  function clearCursorTimers() {
+    if (cursorIntervalRef.current) {
+      clearInterval(cursorIntervalRef.current);
+      cursorIntervalRef.current = null;
+    }
+    if (decelTimeoutRef.current) {
+      clearTimeout(decelTimeoutRef.current);
+      decelTimeoutRef.current = null;
+    }
+    if (cursorTimeoutRef.current) {
+      clearTimeout(cursorTimeoutRef.current);
+      cursorTimeoutRef.current = null;
+    }
   }
-  if (decelTimeoutRef.current) {
-    clearTimeout(decelTimeoutRef.current);
-    decelTimeoutRef.current = null;
-  }
-  if (cursorTimeoutRef.current) {
-    clearTimeout(cursorTimeoutRef.current);
-    cursorTimeoutRef.current = null;
-  }
-}
-
 
   function stopCursor() {
     clearCursorTimers();
@@ -254,12 +266,12 @@ function clearCursorTimers() {
     cursorRunningRef.current = true;
 
     setHlIndex((prev) => (prev == null ? 0 : prev));
-    setHlColor(randColor());
+    // setHlColor(randColor());
 
     cursorIntervalRef.current = window.setInterval(() => {
       setHlIndex((idx) => {
         const next = ((idx ?? 0) + 1) % sliceCount;
-        setHlColor(randColor());
+        //  setHlColor(randColor());
         playHop(); // 🔊 tick each hop
         return next;
       });
@@ -270,55 +282,63 @@ function clearCursorTimers() {
    * Decelerate the highlight and land on a target slice index.
    * Adds a couple of extra laps to look natural.
    */
-function settleOnWinner(
-  targetIndex: number,
-  opts?: { extraLaps?: number; startDelay?: number; addPerStep?: number; maxDelay?: number }
-) {
-  if (!sliceCount) return;
-  if (targetIndex < 0 || targetIndex >= sliceCount) {
-    stopCursor();
-    return;
-  }
-
-  clearCursorTimers();
-
-  let idx = hlIndex ?? 0;
-  const extraLaps = opts?.extraLaps ?? 0;        // 0 for fast finish
-  let stepsLeft = ((targetIndex - idx + sliceCount) % sliceCount) + extraLaps * sliceCount;
-
-  let delay = opts?.startDelay ?? 45;            // start snappy
-  const addPer = opts?.addPerStep ?? 18;         // decel faster
-  const maxDelay = opts?.maxDelay ?? 140;        // cap so we finish <~1s
-
-  const step = () => {
-    if (stepsLeft <= 0) {
+  function settleOnWinner(
+    targetIndex: number,
+    opts?: {
+      extraLaps?: number;
+      startDelay?: number;
+      addPerStep?: number;
+      maxDelay?: number;
+    }
+  ) {
+    if (!sliceCount) return;
+    if (targetIndex < 0 || targetIndex >= sliceCount) {
       stopCursor();
-      if (!landedOnceRef.current) {
-        landedOnceRef.current = true;
-        const winnerKey = (liveBoxes[targetIndex]?.key ?? "") as FoodsKey;
-        setForcedWinner(winnerKey);
-        doRevealFlights(winnerKey);
-        if (winAudioRef.current && audioReady) {
-          winAudioRef.current.currentTime = 0;
-          winAudioRef.current.play().catch(() => {});
-        }
-      }
       return;
     }
 
-    idx = (idx + 1) % sliceCount;
-    setHlIndex(idx);
-    setHlColor(randColor());
-    playHop();
-    stepsLeft--;
+    clearCursorTimers();
 
-    delay = Math.min(maxDelay, delay + addPer);
-    decelTimeoutRef.current = window.setTimeout(step, delay) as unknown as number;
-  };
+    let idx = hlIndex ?? 0;
+    const extraLaps = opts?.extraLaps ?? 0; // 0 for fast finish
+    let stepsLeft =
+      ((targetIndex - idx + sliceCount) % sliceCount) + extraLaps * sliceCount;
 
-  step();
-}
+    let delay = opts?.startDelay ?? 45; // start snappy
+    const addPer = opts?.addPerStep ?? 18; // decel faster
+    const maxDelay = opts?.maxDelay ?? 140; // cap so we finish <~1s
 
+    const step = () => {
+      if (stepsLeft <= 0) {
+        stopCursor();
+        if (!landedOnceRef.current) {
+          landedOnceRef.current = true;
+          const winnerKey = (liveBoxes[targetIndex]?.key ?? "") as FoodsKey;
+          setForcedWinner(winnerKey);
+          doRevealFlights(winnerKey);
+          if (winAudioRef.current && audioReady) {
+            winAudioRef.current.currentTime = 0;
+            winAudioRef.current.play().catch(() => {});
+          }
+        }
+        return;
+      }
+
+      idx = (idx + 1) % sliceCount;
+      setHlIndex(idx);
+      // setHlColor(randColor());
+      playHop();
+      stepsLeft--;
+
+      delay = Math.min(maxDelay, delay + addPer);
+      decelTimeoutRef.current = window.setTimeout(
+        step,
+        delay
+      ) as unknown as number;
+    };
+
+    step();
+  }
 
   // ======= SOFT TOAST (no external lib) =======
   const [tip, setTip] = useState<string | null>(null);
@@ -428,13 +448,16 @@ function settleOnWinner(
   const hubTop = wheelTop + R;
 
   // ——— Sounds
-  const [prefs, setPrefs] = useState<Prefs>({
-    master: 1,
-    bet: 1,
-    reveal: 1,
-    win: 1,
-    bg: 1,
+  const [prefs, setPrefs] = useState<Prefs>(() => {
+    if (typeof window === "undefined") return DEFAULT_PREFS;
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      return raw ? normalizePrefs(JSON.parse(raw)) : DEFAULT_PREFS;
+    } catch {
+      return DEFAULT_PREFS;
+    }
   });
+
   const betAudioRef = useRef<HTMLAudioElement | null>(null);
   const revealAudioRef = useRef<HTMLAudioElement | null>(null);
   const winAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -449,7 +472,7 @@ function settleOnWinner(
       revealAudioRef.current.volume = m * clamp01(prefs.reveal);
     if (winAudioRef.current)
       winAudioRef.current.volume = m * clamp01(prefs.win);
-    if (bgAudioRef.current) bgAudioRef.current.volume = m * clamp01(prefs.bg);
+    if (bgAudioRef.current) bgAudioRef.current.volume = clamp01(prefs.bg);
 
     // hop pool uses "reveal" slider by default
     hopPoolRef.current.forEach((a) => {
@@ -494,8 +517,9 @@ function settleOnWinner(
 
     if (bgAudioRef.current) {
       bgAudioRef.current.loop = true;
-      bgAudioRef.current.volume = prefs.master * prefs.bg;
+      bgAudioRef.current.volume = clamp01(prefs.bg); // BG ignores master
     }
+
     applyVolumes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -676,6 +700,8 @@ function settleOnWinner(
     undefined
   );
   const [blockCount, setBlockCount] = useState(0); // 0..10
+  // --- Betting sweep (red border + finger pointer) ---
+  const [sweepIdx, setSweepIdx] = useState<number | null>(null);
 
   const serverBlockRound = (
     typeof (round as any)?.blockRound === "number"
@@ -757,7 +783,7 @@ function settleOnWinner(
   const controls = useAnimation();
   //const lastSpinRoundRef = useRef<string | null>(null);
 
-  const [wheelDeg, setWheelDeg] = useState(0);
+  //const [wheelDeg, setWheelDeg] = useState(0);
 
   // when betting closes, hide transient flies
   useEffect(() => {
@@ -805,46 +831,50 @@ function settleOnWinner(
   }, [round?.roundStatus, sliceCount]);
 
   // When server reveals the winner, decelerate and land on that slice
-useEffect(() => {
-  if (!sliceCount) return;
+  useEffect(() => {
+    if (!sliceCount) return;
 
-  if (round?.roundStatus === "revealing") {
-    landedOnceRef.current = false;
-    startRevealingCursor(); // fast→slow over the 5s
-    return;
-  }
-
-  if (round?.roundStatus === "revealed") {
-    // stop revealing loop immediately
-    stopCursor();
-
-    // find the winner and finish QUICKLY (≤~1s)
-    const raw = (round as any)?.winnerBox ?? (round as any)?.winningBox;
-    const winnerKey = norm(raw);
-    const target = liveBoxes.findIndex((b) => norm(b.key) === winnerKey);
-
-    if (target >= 0) {
-      // fast settle: 0 extra laps, ~45ms start, +18ms/step, cap 140ms
-      // was: settleOnWinner(target, { extraLaps: 0, startDelay: 45, addPerStep: 18, maxDelay: 140 });
-settleOnWinner(target, {
-  extraLaps: 0,       // keep 0 (1 lap may feel too long)
-  startDelay: 60,     // start a little slower
-  addPerStep: 24,     // decelerate more per hop
-  maxDelay: 200       // allow a slower peak delay
-});
-;
-    } else {
-      // winner is Pizza/Salad or unknown: no ring should keep moving
-      stopAndClearHighlight();
-      setTimeout(() => setShowRoundWinners(true), WINNER_POPUP_DELAY_MS);
+    if (round?.roundStatus === "revealing") {
+      landedOnceRef.current = false;
+      startRevealingCursor(); // fast→slow over the 5s
+      return;
     }
-    return;
-  }
 
-  // any other phase
-  stopAndClearHighlight();
-}, [round?.roundStatus, sliceCount, liveBoxes, (round as any)?.winnerBox, (round as any)?.winningBox]);
+    if (round?.roundStatus === "revealed") {
+      // stop revealing loop immediately
+      stopCursor();
 
+      // find the winner and finish QUICKLY (≤~1s)
+      const raw = (round as any)?.winnerBox ?? (round as any)?.winningBox;
+      const winnerKey = norm(raw);
+      const target = liveBoxes.findIndex((b) => norm(b.key) === winnerKey);
+
+      if (target >= 0) {
+        // fast settle: 0 extra laps, ~45ms start, +18ms/step, cap 140ms
+        // was: settleOnWinner(target, { extraLaps: 0, startDelay: 45, addPerStep: 18, maxDelay: 140 });
+        settleOnWinner(target, {
+          extraLaps: 0, // keep 0 (1 lap may feel too long)
+          startDelay: 60, // start a little slower
+          addPerStep: 24, // decelerate more per hop
+          maxDelay: 200, // allow a slower peak delay
+        });
+      } else {
+        // winner is Pizza/Salad or unknown: no ring should keep moving
+        stopAndClearHighlight();
+        setTimeout(() => setShowRoundWinners(true), WINNER_POPUP_DELAY_MS);
+      }
+      return;
+    }
+
+    // any other phase
+    stopAndClearHighlight();
+  }, [
+    round?.roundStatus,
+    sliceCount,
+    liveBoxes,
+    (round as any)?.winnerBox,
+    (round as any)?.winningBox,
+  ]);
 
   // Cleanup on unmount
   useEffect(() => () => stopCursor(), []);
@@ -968,78 +998,92 @@ settleOnWinner(target, {
     return false;
   }
 
-    const onSliceClick = useCallback(
-        async (key: BoxKey) => {
-            console.log("fruittttttttttttttttttttttttttttttttttttt", key)
-            const bal = balance ?? 0;
-            if (bal <= 0) return notify("You don't have coin");
-            if (bal < (selectedChip || 0)) return notify("Not enough balance for this chip");
-            if (round?.roundStatus !== "betting" || showLeaderboard || !selectedChip) return;
+  const onSliceClick = useCallback(
+    async (key: BoxKey) => {
+      console.log("fruittttttttttttttttttttttttttttttttttttt", key);
+      const bal = balance ?? 0;
+      if (bal <= 0) return notify("You don't have coin");
+      if (bal < (selectedChip || 0))
+        return notify("Not enough balance for this chip");
+      if (round?.roundStatus !== "betting" || showLeaderboard || !selectedChip)
+        return;
 
-            // 🔹 Instant local fly (no wait)
-            const idx = liveBoxes.findIndex(b => b.key === key);
-            if (idx >= 0) {
-                const to = targetForBet(idx, uid()); // use a temp id just for offset variance
-                spawnLocalFly(to, selectedChip);
-                markPendingLocal(key, selectedChip); // so echo won't duplicate
-            }
+      // 🔹 Instant local fly (no wait)
+      const idx = liveBoxes.findIndex((b) => b.key === key);
+      if (idx >= 0) {
+        const to = targetForBet(idx, uid()); // use a temp id just for offset variance
+        spawnLocalFly(to, selectedChip);
+        markPendingLocal(key, selectedChip); // so echo won't duplicate
+      }
 
-            // fire the request (no need to block UI)
-            try {
-                await placeBet(key, selectedChip);
-            } catch (e) {
-                // optional: rollback optimistic userBets or show toast
-                notify("Bet failed");
-            }
-        },
-        [balance, round?.roundStatus, showLeaderboard, isRoundOver, selectedChip, placeBet, liveBoxes, targetForBet, spawnLocalFly]
-    );
+      // fire the request (no need to block UI)
+      try {
+        await placeBet(key, selectedChip);
+      } catch (e) {
+        // optional: rollback optimistic userBets or show toast
+        notify("Bet failed");
+      }
+    },
+    [
+      balance,
+      round?.roundStatus,
+      showLeaderboard,
+      isRoundOver,
+      selectedChip,
+      placeBet,
+      liveBoxes,
+      targetForBet,
+      spawnLocalFly,
+    ]
+  );
 
+  // helper (top-level with other utils)
+  const clamp = (n: number, a: number, b: number) =>
+    Math.min(b, Math.max(a, n));
 
+  // Drive the hop while status === "revealing"
+  function startRevealingCursor() {
+    if (!sliceCount) return;
+    stopCursor();
+    cursorRunningRef.current = true;
 
-    // helper (top-level with other utils)
-const clamp = (n: number, a: number, b: number) => Math.min(b, Math.max(a, n));
+    // reveal duration in ms (fallback 5000)
+    const revealMs =
+      (typeof setting?.revealDuration === "number"
+        ? setting.revealDuration
+        : 5) * 1000;
 
-// Drive the hop while status === "revealing"
-function startRevealingCursor() {
-  if (!sliceCount) return;
-  stopCursor();
-  cursorRunningRef.current = true;
+    // phaseEndAt already points to revealTime while revealing
+    const endAt = phaseEndAt || Date.now() + revealMs;
 
-  // reveal duration in ms (fallback 5000)
-  const revealMs =
-    (typeof setting?.revealDuration === "number"
-      ? setting.revealDuration
-      : 5) * 1000;
+    const step = () => {
+      // stop if phase changed
+      if (!cursorRunningRef.current || round?.roundStatus !== "revealing")
+        return;
 
-  // phaseEndAt already points to revealTime while revealing
-  const endAt = phaseEndAt || (Date.now() + revealMs);
+      // hop one slice
+      setHlIndex((idx) => ((idx ?? 0) + 1) % sliceCount);
+      // setHlColor(randColor());
+      playHop();
 
-  const step = () => {
-    // stop if phase changed
-    if (!cursorRunningRef.current || round?.roundStatus !== "revealing") return;
+      // compute how much time has passed in revealing [0..1]
+      const left = Math.max(0, endAt - Date.now());
+      const k = 1 - clamp(left / Math.max(1, revealMs), 0, 1); // 0→1 from start→end
 
-    // hop one slice
-    setHlIndex((idx) => ((idx ?? 0) + 1) % sliceCount);
-    setHlColor(randColor());
-    playHop();
+      // map k to delay: fast→slow, e.g. 50ms → 160ms
+      const delay = Math.round(50 + k * 110);
 
-    // compute how much time has passed in revealing [0..1]
-    const left = Math.max(0, endAt - Date.now());
-    const k = 1 - clamp(left / Math.max(1, revealMs), 0, 1); // 0→1 from start→end
+      cursorTimeoutRef.current = window.setTimeout(
+        step,
+        delay
+      ) as unknown as number;
+    };
 
-    // map k to delay: fast→slow, e.g. 50ms → 160ms
-    const delay = Math.round(50 + k * 110);
-
-    cursorTimeoutRef.current = window.setTimeout(step, delay) as unknown as number;
-  };
-
-  // ensure an initial index
-  setHlIndex((prev) => (prev == null ? 0 : prev));
-  setHlColor(randColor());
-  step();
-}
-
+    // ensure an initial index
+    setHlIndex((prev) => (prev == null ? 0 : prev));
+    // setHlColor(randColor());
+    step();
+  }
 
   // add near other refs:
   const seenEchoIdsRef = useRef<Set<string>>(new Set());
@@ -1289,7 +1333,7 @@ function startRevealingCursor() {
   }
 
   console.log("roundddddddddddddddddddd", round);
- // console.log("settinggggggggggggggggggggggggggg", setting);
+  // console.log("settinggggggggggggggggggggggggggg", setting);
 
   useEffect(() => {
     if (!sliceCount) return;
@@ -1319,7 +1363,49 @@ function startRevealingCursor() {
   console.log("winHistoryyyyyyyyyyyyyyyyyyyyyyyyyy", ranking, token);
 
   //console.log("roundddddddd",round)
+
+  const sweepTimerRef = useRef<number | null>(null);
+  const SWEEP_STEP_MS = 1000; // You can modify this value based on your preference.
+
+  useEffect(() => {
+    if (round?.roundStatus === "betting" && liveBoxes.length > 0) {
+      let i = -1;
+
+      const tick = () => {
+        i = (i + 1) % liveBoxes.length; // Update the sweep index
+        setSweepIdx(i); // Update state with the new sweep index
+
+        // Set the next timeout to keep the interval consistent
+        sweepTimerRef.current = window.setTimeout(tick, SWEEP_STEP_MS);
+      };
+
+      tick(); // Start the sweeping animation
+
+      // Cleanup on unmount or when the round changes
+      return () => {
+        if (sweepTimerRef.current) {
+          clearTimeout(sweepTimerRef.current);
+          sweepTimerRef.current = null;
+        }
+      };
+    } else {
+      // If betting is over, reset the sweep index and stop the timer
+      setSweepIdx(null);
+
+      if (sweepTimerRef.current) {
+        clearTimeout(sweepTimerRef.current);
+        sweepTimerRef.current = null;
+      }
+    }
+
+    // Dependency array to only trigger this effect when liveBoxes or round status changes
+  }, [liveBoxes.length, round?.roundStatus]);
+
   /** ==================== RENDER ==================== **/
+
+  console.log("Current sweep interval: ", SWEEP_STEP_MS); // Check value of SWEEP_STEP_MS
+  console.log("Current sweep index: ", sweepIdx); // Verify sweepIdx is updating every 1000ms
+
   return (
     <div
       ref={pageRef}
@@ -1454,7 +1540,7 @@ function startRevealingCursor() {
               onUpdate={(latest) => {
                 if (typeof (latest as any).rotate === "number") {
                   const rot = (latest as any).rotate as number;
-                  setWheelDeg(rot);
+                  //  setWheelDeg(rot);
                   wheelDegRef.current = rot;
                 }
               }}
@@ -1462,84 +1548,73 @@ function startRevealingCursor() {
                 top: wheelTop,
                 width: D,
                 height: D,
-                borderRadius: 9999,
-                background:
-                  "conic-gradient(from 0deg,#0f172a 0 45deg,#0b132d 45deg 90deg,#0f172a 90deg 135deg,#0b132d 135deg 180deg,#0f172a 180deg 225deg,#0b132d 225deg 270deg,#0f172a 270deg 315deg,#0b132d 315deg 360deg)",
-                boxShadow:
-                  "0 35px 80px rgba(0,0,0,.6), inset 0 0 0 14px #3b82f6, inset 0 0 0 22px rgba(255,255,255,.15), inset 0 0 0 30px #1d4ed8",
-                transformStyle: "preserve-3d",
-                ["--wheel-rot" as any]: `${wheelDeg}deg`,
               }}
             >
               {/* rim highlight */}
-              <div
-                className="absolute inset-0 rounded-full opacity-50"
-                style={{
-                  background:
-                    "radial-gradient(closest-side, transparent 72%, rgba(255,255,255,.15) 72%, transparent 76%)",
-                }}
-              />
+              <div className="absolute inset-0" />
 
-              {/* spokes */}
-              {FOODS.map((_, i) => (
-                <div
-                  key={`spoke-${i}`}
-                  className="absolute left-1/2 top-1/2 origin-left"
-                  style={{
-                    width: R,
-                    height: 5,
-                    background: "rgba(255,255,255,.05)",
-                    transform: `rotate(${i * (360 / FOODS.length)}deg)`,
-                  }}
-                />
-              ))}
+              {/* Spokes */}
+              {FOODS.map((_, i) => {
+                const rotationDeg = i * (360 / FOODS.length); // Calculate the rotation for each spoke
+                const spokeLength = R - 10;
+
+                return (
+                  <div
+                    key={`spoke-${i}`}
+                    className="absolute left-1/2 top-1/2 origin-left"
+                    style={{
+                      width: spokeLength,
+                      height: 10,
+                      background: "linear-gradient(180deg, #60a5fa, #2563eb)",
+                      transform: `rotate(${rotationDeg}deg)`,
+                    }}
+                  >
+                    {/* Gold Bulb at the center of each spoke */}
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 2.5,
+                        left: 60,
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background:
+                          "radial-gradient(circle at 40% 30%, #fde68a, #fbbf24 55%, #f59e0b)",
+                        boxShadow: "0 0 8px rgba(0, 0, 0, 0.3)",
+                      }}
+                    />
+                  </div>
+                );
+              })}
 
               {/* per-slice buttons */}
               {liveBoxes.map((bx, i) => {
-                // geometry
                 const angDeg = i * sliceAngle;
                 const rad = ((angDeg - 90) * Math.PI) / 180;
                 const cx = R + ringR * Math.cos(rad);
                 const cy = R + ringR * Math.sin(rad);
-                // const totalBet = userBets[bx.key] ?? 0;
 
                 const disabled =
                   round?.roundStatus !== "betting" || showLeaderboard;
                 const isWinner =
                   forcedWinner === bx.key && round?.roundStatus !== "betting";
 
-                const studRadius = 5;
-                const studOffset = btn / 2 + 10;
-                const tx = -Math.sin(rad);
-                const ty = Math.cos(rad);
-                const lx = cx - tx * studOffset;
-                const ly = cy - ty * studOffset;
-
-                // for hover/tap gating
                 const balanceNow = balance ?? 0;
                 const noCoins = balanceNow <= 0;
                 const cannotAffordChip = balanceNow < (selectedChip || 0);
                 const visuallyDisabled =
                   disabled || noCoins || cannotAffordChip;
-                const isActive = hlIndex === i; // add this near where you compute isWinner, disabled, etc.
-              //  const ACTIVE_RING_PX = 4; // thickness of the moving border
+
+                const isActive = hlIndex === i;
+                const isRevealing =
+                  round?.roundStatus === "revealing" ||
+                  round?.roundStatus === "revealed";
+                const dimSlice = isRevealing && !isActive; // <- darken only non-active slices WHILE revealing
+                const isSweep =
+                  round?.roundStatus === "betting" && sweepIdx === i;
+                const isCurrentSlice = sweepIdx === i;
                 return (
                   <div key={bx.key}>
-                    {/* Stud */}
-                    <div
-                      className="absolute rounded-full pointer-events-none"
-                      style={{
-                        left: lx - studRadius,
-                        top: ly - studRadius,
-                        width: studRadius * 2,
-                        height: studRadius * 2,
-                        background:
-                          "radial-gradient(circle at 30% 30%, #fff7cc, #ffd24f 60%, #e6a400 100%)",
-                        boxShadow: "0 2px 4px rgba(0,0,0,.5)",
-                      }}
-                    />
-
-                    {/* Slice button */}
                     <motion.button
                       whileTap={{ scale: visuallyDisabled ? 1 : 0.96 }}
                       whileHover={
@@ -1554,7 +1629,7 @@ function startRevealingCursor() {
                         if (disabled || !selectedChip) return;
                         onSliceClick(bx.key);
                       }}
-                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border shadow focus:outline-none focus:ring-2 focus:ring-sky-400 ${round?.roundStatus === "revealing" && !isActive? "opacity-75": ""} ${
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border shadow ${
                         isWinner
                           ? "animate-[blink_900ms_steps(2)_infinite] glow"
                           : ""
@@ -1564,28 +1639,15 @@ function startRevealingCursor() {
                         top: cy,
                         width: btn,
                         height: btn,
-
-                        // keep your background or change if you like; this doesn't affect glassiness of the border
-                        background:
-                          "radial-gradient(circle at 50% 35%, rgba(0,102,204,.9), rgba(0,76,153,.75) 55%, rgba(0,51,102,.65)), linear-gradient(180deg, rgba(0,76,153,.2), rgba(0,51,102,0))",
-
-                        // make the moving border thick & solid
+                        position: "absolute",
+                        background: "linear-gradient(180deg,#60a5fa,#2563eb)",
                         borderStyle: "solid",
-                        borderWidth:  4,
+                        borderWidth: 5,
                         borderColor: isWinner
                           ? "#22c55e"
-                          : isActive
-                          ? hlColor
-                          : "rgba(255,255,255,.15)",
-
-                        // bold outer glow for active; remove the glassy inset highlight
-                        boxShadow: isWinner
-                          ? "0 0 0 8px rgba(34,197,94,.22), 0 14px 34px rgba(0,0,0,.45)"
-                          : isActive
-                          ? `0 0 0 2px ${hlColor}, 0 0 10px ${hlColor}cc, 0 0 22px ${hlColor}88`
-                          : "0 12px 28px rgba(0,0,0,.45)",
-
-                        // snappy transitions so the ring feels crisp while moving
+                          : isActive || isSweep
+                          ? "#FF0000"
+                          : "rgb(39, 82, 172)",
                         transition:
                           "border-color 80ms linear, border-width 80ms linear, box-shadow 80ms linear",
                       }}
@@ -1594,10 +1656,48 @@ function startRevealingCursor() {
                       aria-disabled={visuallyDisabled}
                       title={`Bet on ${bx.title} (pays x${bx.multiplier})`}
                     >
-                      {/* Counter-rotated content */}
+                      {round?.roundStatus === "betting" && isCurrentSlice && (
+                        <div
+                          className="r -rotate-12 z-50"
+                          style={{
+                            position: "absolute",
+                            bottom: "1px",
+                            right: "0px",
+                            fontSize: "30px",
+                            width: "30px",
+                            height: "30px",
+                            pointerEvents: "none",
+                          }}
+                        >
+                          <img
+                            src="/Pointing_finger.png"
+                            alt="Pointing Finger"
+                            style={{
+                              width: "100%",
+                              height: "100%", // Make sure the image scales to the div's size
+                              objectFit: "contain", // Keeps the aspect ratio intact
+                            }}
+                          />
+                        </div>
+                      )}
+                      {/* DARK OVERLAY – toggles only while revealing & not active */}
+                      <motion.div
+                        aria-hidden
+                        className="absolute inset-0 pointer-events-none rounded-full"
+                        style={{
+                          // a richer “dark” look: slight vignette + black scrim
+                          background:
+                            "radial-gradient(120% 120% at 50% 35%, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.55) 100%), rgba(0,0,0,0.55)",
+                          zIndex: 20,
+                        }}
+                        animate={{ opacity: dimSlice ? 1 : 0 }}
+                        transition={{ duration: 0.15, ease: "linear" }}
+                      />
+                      {/* content kept above background, below overlay when dimming */}
                       <div
                         className="relative flex flex-col items-center justify-center w-full h-full rounded-full"
                         style={{
+                         // zIndex: 10,
                           transform: "rotate(calc(-1 * var(--wheel-rot)))",
                         }}
                       >
@@ -1618,12 +1718,10 @@ function startRevealingCursor() {
                           </span>
                         </div>
 
-                        {/* Hot badge */}
                         {hotKey === bx.key && (
                           <div
-                            className="absolute -left-1 -top-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-500 text-white shadow"
+                            className="absolute -left-1 -top-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-500 text-white shadow z-50"
                             style={{
-                              boxShadow: "0 6px 14px rgba(0,0,0,.45)",
                               border: "1px solid rgba(255,255,255,.25)",
                             }}
                             aria-label={`HOT: ${bx.title} has the highest total bets`}
@@ -1632,7 +1730,6 @@ function startRevealingCursor() {
                           </div>
                         )}
 
-                        {/* Total bet text (your local bet amount or show server total if preferred) */}
                         <div className="text-[10px] text-white">
                           Total: {fmt(bx.total)}
                         </div>
@@ -1650,8 +1747,7 @@ function startRevealingCursor() {
                 top: hubTop,
                 width: hubSize,
                 height: hubSize,
-                background:
-                  "radial-gradient(circle at 50% 35%, rgba(99,102,241,.9), rgba(59,130,246,.9)), conic-gradient(from 210deg, rgba(255,255,255,.18), rgba(255,255,255,.04) 60%)",
+                background: "linear-gradient(180deg,#2f63c7,#1f4290)",
                 boxShadow:
                   "0 20px 50px rgba(0,0,0,.55), inset 0 0 0 10px rgba(255,255,255,.15)",
                 border: "1px solid rgba(255,255,255,.25)",
@@ -1675,7 +1771,7 @@ function startRevealingCursor() {
                     : round?.roundStatus === "revealed"
                     ? "revealed"
                     : round?.roundStatus === "completed"
-                    ? "Waiting for next round"
+                    ? "Next round in"
                     : "Preparing…"}
                 </div>
 
@@ -1686,7 +1782,7 @@ function startRevealingCursor() {
             </motion.div>
           </div>
 
-          {/* Progress & platform */}
+          {/* wheel stand */}
           <div
             className="absolute left-1/2 -translate-x-1/2 z-10"
             style={{
@@ -1696,42 +1792,18 @@ function startRevealingCursor() {
             }}
           >
             <div className="relative w-full h-full">
-              <div
-                className="absolute bottom-10 bg-[#36a2ff] border-4 border-[#2379c9] rounded-md"
-                style={{
-                  left: "50%",
-                  transform: `translateX(-${D * 0.36}px) skewX(10deg)`,
-                  width: D * 0.28,
-                  height: Math.max(110, D * 0.28),
-                  boxShadow: "0 4px 0 #2379c9",
-                }}
-              />
-              <div
-                className="absolute bottom-10 bg-[#36a2ff] border-4 border-[#2379c9] rounded-md"
-                style={{
-                  left: "50%",
-                  transform: `translateX(${D * 0.08}px) skewX(-10deg)`,
-                  width: D * 0.28,
-                  height: Math.max(110, D * 0.28),
-                  boxShadow: "0 4px 0 #2379c9",
-                }}
-              />
+              <WheelStand wheelTop={wheelTop} D={D} R={R} />
+
               {/* === Platforms (Pizza / Salad) === */}
               {(() => {
                 const pizza = platforms.Pizza;
                 const salad = platforms.Salad;
+                const isRevealing =
+                  round?.roundStatus === "revealing" ||
+                  round?.roundStatus === "revealed";
 
                 const winnerIs = (who: "Pizza" | "Salad") =>
-                  (round?.roundStatus === "revealed" ||
-                    round?.roundStatus === "completed") &&
-                  round?.winnerBox === who;
-
-                const ringFor = (idx: 0 | 1) =>
-                  platIdx === idx
-                    ? platColor
-                    : idx === 0
-                    ? "#f97316"
-                    : "#16a34a";
+                  round?.roundStatus === "revealed" && round?.winnerBox === who;
 
                 return (
                   <div className="absolute -left-8 -right-8 flex justify-between">
@@ -1741,22 +1813,12 @@ function startRevealingCursor() {
                         className="rounded-full p-1 z-30"
                         style={{
                           background: "#facc15",
-                          borderStyle: "solid",
-                          borderWidth:
-                            platIdx === 0 || winnerIs("Pizza") ? 6 : 2,
-                          borderColor: winnerIs("Pizza")
-                            ? "#22c55e"
-                            : ringFor(0),
+                          opacity: isRevealing || winnerIs("Pizza") ? 0.3 : 1,
+                          transition: "opacity 0.3s ease", // Smooth opacity transition
                           boxShadow:
                             platIdx === 0 || winnerIs("Pizza")
-                              ? `0 0 0 3px ${
-                                  platIdx === 0 ? platColor : "#22c55e"
-                                }55,
-                   0 0 18px ${platIdx === 0 ? platColor : "#22c55e"}66,
-                   0 10px 24px rgba(0,0,0,.45)`
-                              : "0 2px 4px rgba(0,0,0,.35)",
-                          transition:
-                            "border-color 60ms linear, border-width 60ms linear, box-shadow 60ms linear",
+                              ? "0 0 18px #22c55e, 0 10px 24px rgba(0, 0, 0, 0.45)"
+                              : "0 2px 4px rgba(0, 0, 0, 0.35)",
                         }}
                       >
                         <span className="text-3xl pb-1">
@@ -1770,9 +1832,6 @@ function startRevealingCursor() {
                       <div className="bg-[#0864b4] text-white text-[10px] font-bold px-1 rounded-md -bottom-2 shadow absolute z-30">
                         {pizza.multiplier ? `${pizza.multiplier}x` : "—"}
                       </div>
-
-                      {/* keep your svg + label */}
-                      {/* ... */}
                     </div>
 
                     {/* SALAD */}
@@ -1781,22 +1840,12 @@ function startRevealingCursor() {
                         className="rounded-full p-1 z-30"
                         style={{
                           background: "#4ade80",
-                          borderStyle: "solid",
-                          borderWidth:
-                            platIdx === 1 || winnerIs("Salad") ? 6 : 2,
-                          borderColor: winnerIs("Salad")
-                            ? "#22c55e"
-                            : ringFor(1),
+                          opacity: isRevealing || winnerIs("Salad") ? 0.3 : 1,
+                          transition: "opacity 0.3s ease",
                           boxShadow:
                             platIdx === 1 || winnerIs("Salad")
-                              ? `0 0 0 3px ${
-                                  platIdx === 1 ? platColor : "#22c55e"
-                                }55,
-                   0 0 18px ${platIdx === 1 ? platColor : "#22c55e"}66,
-                   0 10px 24px rgba(0,0,0,.45)`
-                              : "0 2px 4px rgba(0,0,0,.35)",
-                          transition:
-                            "border-color 60ms linear, border-width 60ms linear, box-shadow 60ms linear",
+                              ? "0 0 18px #22c55e, 0 10px 24px rgba(0, 0, 0, 0.45)"
+                              : "0 2px 4px rgba(0, 0, 0, 0.35)",
                         }}
                       >
                         <span className="text-3xl">{salad.icon ?? "🥗"}</span>
@@ -1808,9 +1857,6 @@ function startRevealingCursor() {
                       <div className="bg-[#0864b4] text-white text-[9px] font-bold px-1 rounded-md -mr-3 -bottom-2 shadow absolute z-30">
                         {salad.multiplier ? `${salad.multiplier}x` : "—"}
                       </div>
-
-                      {/* keep your svg + label */}
-                      {/* ... */}
                     </div>
                   </div>
                 );
@@ -2335,2408 +2381,3 @@ function fmt(n: number) {
     n
   );
 }
-
-function clamp01(n: number) {
-  return Math.max(0, Math.min(1, n));
-}
-
-
-
-
-
-// import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-// import {
-//   motion,
-//   AnimatePresence,
-//   useAnimation,
-//   useReducedMotion,
-// } from "framer-motion";
-// import {
-//   X,
-//   Volume2,
-//   ScrollText,
-//   MessageCircleQuestionMark,
-// } from "lucide-react";
-// import { useGame, type ApiHistoryItem } from "./useGame.socket";
-// import { FOODS, type FoodsKey } from "./types";
-// import LeaderboardModal from "./LeaderboardModal";
-// import GameRules from "./GameRules";
-// import Record from "./Record";
-// import SettingsBottomSheet, { type Prefs } from "./SettingsBottomSheet";
-// import type { TopWinnersResponse } from "./RoundWinnersModal";
-// import RoundWinnersModal from "./RoundWinnersModal";
-// import InitialLoader from "./InitialLoader";
-// import LoginPage from "./LoginPage";
-// import PingDisplay from "./components/PingDisplay";
-// import TodayLeaderboardModal from "./TodayLeaderboardModal";
-// import { useGetDailyWins } from "./hooks/getDailyWins";
-
-// /** ==================== CONFIG ==================== **/
-// const CHIPS = [1000, 2000, 5000, 10000, 50000] as const;
-// //const MAX_COINS_PER_SLICE = 60;
-// const INTERMISSION_SECS = 8; // how long the leaderboard intermission lasts
-// // === Cursor/popup timings ===
-// //const HOP_MS = 70;               // same hop speed for wheel + pizza/salad
-// const WINNER_POPUP_DELAY_MS = 1500; // hold on winner before showing popup
-
-// // Sounds
-// const SND_BET = "/mixkit-clinking-coins-1993.wav";
-// const SND_REVEAL =
-//   "/video-game-bonus-retro-sparkle-gamemaster-audio-lower-tone-1-00-00.mp3";
-// const SND_WIN = "/mixkit-ethereal-fairy-win-sound-2019.wav";
-// const SND_BG_LOOP = "/background-music-minecraftgaming-405001.mp3";
-// const PREFS_KEY = "soundPrefsWheelV1";
-
-// const norm = (s?: string | null) => (s ?? "").trim().toLowerCase();
-// const resolveEventKey = (e: any) =>
-//   e?.key ?? e?.box ?? e?.fruit ?? e?.title ?? e?.name ?? "";
-
-// // Visual language
-// export const EMOJI: Record<FoodsKey, string> = {
-//   meat: "🥩",
-//   tomato: "🍅",
-//   corn: "🌽",
-//   sausage: "🌭",
-//   lettuce: "🥬",
-//   carrot: "🥕",
-//   skewer: "🍢",
-//   ham: "🍗",
-// };
-
-// const LABEL: Record<FoodsKey, string> = {
-//   meat: "Meat",
-//   tomato: "Tomato",
-//   corn: "Corn",
-//   sausage: "Sausage",
-//   lettuce: "Lettuce",
-//   carrot: "Carrot",
-//   skewer: "Skewer",
-//   ham: "Ham",
-// };
-
-// const MULTIPLIER: Record<FoodsKey, number> = {
-//   meat: 45,
-//   tomato: 5,
-//   corn: 5,
-//   sausage: 10,
-//   lettuce: 5,
-//   carrot: 5,
-//   skewer: 15,
-//   ham: 25,
-// };
-
-// // Define chip colors based on value
-// const chipColorMap: Record<number, string> = {
-//   500: "#16a34a", // green
-//   1000: "#1fb141", // slightly different green
-//   2000: "#3b82f6", // blue
-//   5000: "#fb923c", // orange
-//   10000: "#ef4444", // red
-//   50000: "#c084fc", // purple (in case more are added)
-// };
-
-// type UiBox = {
-//   key: string; // "meat"
-//   title: string; // "Meat"
-//   icon?: string;
-//   multiplier: number;
-//   group?: string; // "Pizza" | "Salad"
-//   total: number; // totalAmount/totalBet
-//   bettors: number;
-// };
-
-// type BoxKey = string;
-
-// // Safe UUID that works on HTTP too
-// const uid = (() => {
-//   let i = 0;
-//   return () => {
-//     try {
-//       if (globalThis?.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-//     } catch {}
-//     const t = Date.now().toString(36);
-//     const r = Math.random().toString(36).slice(2, 10);
-//     return `id-${t}-${r}-${i++}`;
-//   };
-// })();
-
-// /** ==================== APP ==================== **/
-// export default function App() {
-//   const game = useGame() as any;
-//   const {
-//     user,
-//     round,
-//     placeBet,
-//     echoQueue,
-//     shiftEcho,
-//     balance,
-//     getRoundWinners,
-//     getCurrentHistory,
-//     myBetTotal,
-//     setting,
-//     ping,
-//   } = game;
-//   const startNextRound: (() => Promise<void> | void) | undefined =
-//     game.startNextRound ||
-//     game.startNextBlock ||
-//     game.nextRound ||
-//     game.startRound;
-//   const prefersReducedMotion = useReducedMotion();
-//   const [showRoundWinners, setShowRoundWinners] = useState(false);
-//   const [roundWinners, setRoundWinners] = useState<TopWinnersResponse | null>(
-//     null
-//   );
-//   const [todayWins, setTodayWins] = useState<number | null>(0);
-//   const getDailyWins = useGetDailyWins();
-
-//   // --- Cursor/highlight (replaces spinning) ---
-//   const [hlIndex, setHlIndex] = useState<number | null>(null);
-//   const [hlColor, setHlColor] = useState<string>("#22c55e");
-//   const cursorIntervalRef = useRef<number | null>(null);
-//   const decelTimeoutRef = useRef<number | null>(null);
-//   const cursorRunningRef = useRef(false);
-//   const landedOnceRef = useRef(false);
-
-//   // Use whichever sound you prefer for the hop per move:
-//   const SND_HOP = SND_REVEAL; // or SND_BET if you like that sound better
-//   round.winnerBox === "Pizza" || round.winnerBox === "Salad";
-//   const PLATFORM_KEYS = ["Pizza", "Salad"] as const;
-//   const HL_COLORS = [
-//     "#22c55e",
-//     "#3b82f6",
-//     "#ef4444",
-//     "#a855f7",
-//     "#06b6d4",
-//     "#f59e0b",
-//     "#10b981",
-//   ];
-
-//   const [platIdx, setPlatIdx] = useState<number | null>(null); // 0=Pizza, 1=Salad, null=off
-//   const [platColor, setPlatColor] = useState<string>("#22c55e");
-
-//   useEffect(() => {
-//     if (round?.roundStatus !== "revealing") {
-//       setPlatIdx(null);
-//       return;
-//     }
-//     let i = 0;
-//     let timer: number;
-//     const hop = () => {
-//       setPlatIdx((prev) =>
-//         prev === null ? 0 : (prev + 1) % PLATFORM_KEYS.length
-//       );
-//       setPlatColor(HL_COLORS[i % HL_COLORS.length]);
-//       i++;
-//       timer = window.setTimeout(hop, 90); // fast hops
-//     };
-//     hop();
-//     return () => clearTimeout(timer);
-//   }, [round?.roundStatus]);
-
-//   useEffect(() => {
-//     if (!round) return;
-//     if (round.roundStatus === "revealed" || round.roundStatus === "completed") {
-//       if (round.winnerBox === "Pizza") setPlatIdx(0);
-//       else if (round.winnerBox === "Salad") setPlatIdx(1);
-//       else setPlatIdx(null);
-//     }
-//   }, [round?.roundStatus, round?.winnerBox]);
-
-//   const HOP_POOL_SIZE = 6;
-//   const hopPoolRef = useRef<HTMLAudioElement[]>([]);
-//   const hopIndexRef = useRef(0);
-
-//   function playHop() {
-//     const pool = hopPoolRef.current;
-//     if (!pool.length || !audioReady) return;
-//     const i = hopIndexRef.current++ % pool.length;
-//     try {
-//       const a = pool[i];
-//       a.currentTime = 0;
-//       a.play().catch(() => {});
-//     } catch {}
-//   }
-
-//   const colorPalette = [
-//     "#22c55e", // green
-//     "#eab308", // yellow
-//     "#f97316", // orange
-//     "#ef4444", // red
-//     "#a855f7", // purple
-//     "#06b6d4", // cyan
-//     "#3b82f6", // blue
-//   ];
-//   const randColor = () =>
-//     colorPalette[(Math.random() * colorPalette.length) | 0];
-
-//   // near other refs
-//   const cursorTimeoutRef = useRef<number | null>(null);
-
-//   function clearCursorTimers() {
-//     if (cursorIntervalRef.current) {
-//       clearInterval(cursorIntervalRef.current);
-//       cursorIntervalRef.current = null;
-//     }
-//     if (decelTimeoutRef.current) {
-//       clearTimeout(decelTimeoutRef.current);
-//       decelTimeoutRef.current = null;
-//     }
-//     if (cursorTimeoutRef.current) {
-//       clearTimeout(cursorTimeoutRef.current);
-//       cursorTimeoutRef.current = null;
-//     }
-//   }
-
-//   function stopCursor() {
-//     clearCursorTimers();
-//     cursorRunningRef.current = false;
-//   }
-
-//   function startCursor(speedMs = 70) {
-//     if (!sliceCount) return;
-//     stopCursor();
-//     cursorRunningRef.current = true;
-
-//     setHlIndex((prev) => (prev == null ? 0 : prev));
-//     setHlColor(randColor());
-
-//     cursorIntervalRef.current = window.setInterval(() => {
-//       setHlIndex((idx) => {
-//         const next = ((idx ?? 0) + 1) % sliceCount;
-//         setHlColor(randColor());
-//         playHop(); // 🔊 tick each hop
-//         return next;
-//       });
-//     }, Math.max(25, speedMs)) as unknown as number;
-//   }
-
-//   /**
-//    * Decelerate the highlight and land on a target slice index.
-//    * Adds a couple of extra laps to look natural.
-//    */
-//   function settleOnWinner(
-//     targetIndex: number,
-//     opts?: {
-//       extraLaps?: number;
-//       startDelay?: number;
-//       addPerStep?: number;
-//       maxDelay?: number;
-//     }
-//   ) {
-//     if (!sliceCount) return;
-//     if (targetIndex < 0 || targetIndex >= sliceCount) {
-//       stopCursor();
-//       return;
-//     }
-
-//     clearCursorTimers();
-
-//     let idx = hlIndex ?? 0;
-//     const extraLaps = opts?.extraLaps ?? 0; // 0 for fast finish
-//     let stepsLeft =
-//       ((targetIndex - idx + sliceCount) % sliceCount) + extraLaps * sliceCount;
-
-//     let delay = opts?.startDelay ?? 45; // start snappy
-//     const addPer = opts?.addPerStep ?? 18; // decel faster
-//     const maxDelay = opts?.maxDelay ?? 140; // cap so we finish <~1s
-
-//     const step = () => {
-//       if (stepsLeft <= 0) {
-//         stopCursor();
-//         if (!landedOnceRef.current) {
-//           landedOnceRef.current = true;
-//           const winnerKey = (liveBoxes[targetIndex]?.key ?? "") as FoodsKey;
-//           setForcedWinner(winnerKey);
-//           doRevealFlights(winnerKey);
-//           if (winAudioRef.current && audioReady) {
-//             winAudioRef.current.currentTime = 0;
-//             winAudioRef.current.play().catch(() => {});
-//           }
-//         }
-//         return;
-//       }
-
-//       idx = (idx + 1) % sliceCount;
-//       setHlIndex(idx);
-//       setHlColor(randColor());
-//       playHop();
-//       stepsLeft--;
-
-//       delay = Math.min(maxDelay, delay + addPer);
-//       decelTimeoutRef.current = window.setTimeout(
-//         step,
-//         delay
-//       ) as unknown as number;
-//     };
-
-//     step();
-//   }
-
-//   // ======= SOFT TOAST (no external lib) =======
-//   const [tip, setTip] = useState<string | null>(null);
-//   const tipHideAtRef = useRef<number | null>(null);
-//   function notify(msg: string, ms = 1500) {
-//     setTip(msg);
-//     const hideAt = Date.now() + ms;
-//     tipHideAtRef.current = hideAt;
-//     window.setTimeout(() => {
-//       if (tipHideAtRef.current === hideAt) setTip(null);
-//     }, ms);
-//   }
-
-//   const parseTs = (v?: string | number) =>
-//     typeof v === "number" ? v : v ? Date.parse(v) : 0;
-
-//   const phaseEndAt = useMemo(() => {
-//     const s = round?.roundStatus;
-//     const now = Date.now();
-
-//     // server setting is usually SECONDS; convert to ms and provide a safe default
-//     const prepMs =
-//       typeof setting?.prepareDuration === "number"
-//         ? setting.prepareDuration * 1000
-//         : 8000; // fallback 8s
-
-//     if (s === "betting") return parseTs(round?.endTime);
-//     if (s === "revealing") return parseTs(round?.revealTime);
-
-//     // After reveal we count down the intermission until the next round
-//     if (s === "revealed") return parseTs(round?.prepareTime) || now + prepMs;
-
-//     // While completed, we still want a visible countdown to next start
-//     if (s === "completed") return parseTs(round?.startTime) || now + prepMs;
-
-//     return 0;
-//   }, [
-//     round?.roundStatus,
-//     round?.endTime,
-//     round?.revealTime,
-//     round?.prepareTime,
-//     round?.startTime,
-//     setting?.prepareDuration,
-//   ]);
-
-//   // local UI countdown for the hub
-//   const [uiLeftMs, setUiLeftMs] = useState(0);
-//   useEffect(() => {
-//     const tick = () => setUiLeftMs(Math.max(0, phaseEndAt - Date.now()));
-//     tick(); // set immediately
-//     if (!phaseEndAt) {
-//       setUiLeftMs(0);
-//       return;
-//     }
-//     const id = setInterval(tick, 1000);
-//     return () => clearInterval(id);
-//   }, [phaseEndAt, round?.roundStatus]);
-
-//   // ——— Refs
-//   const pageRef = useRef<HTMLDivElement | null>(null);
-//   const phoneRef = useRef<HTMLDivElement | null>(null);
-//   const wheelRef = useRef<HTMLDivElement | null>(null);
-//   const chipRefs = useRef<Record<number, HTMLButtonElement | null>>({});
-//   const balanceRef = useRef<HTMLDivElement | null>(null);
-//   const bankRef = useRef<HTMLButtonElement | null>(null);
-//   const wheelDegRef = useRef(0);
-
-//   const [selectedChip, setSelectedChip] = useState<number>(CHIPS[1]);
-//   const bettingOpen = round?.roundStatus === "betting";
-
-//   const [isLoaded, setIsLoaded] = useState(false);
-
-//   const [stacked, setStacked] = useState<StackedCoin[]>([]);
-//   const [currentRoundId, setCurrentRoundId] = useState<string | null>(null);
-
-//   const [flies, setFlies] = useState<Fly[]>([]);
-//   const [remoteFlies, setRemoteFlies] = useState<Fly[]>([]);
-//   const [payoutFlies, setPayoutFlies] = useState<PayoutFly[]>([]);
-//   const [bankFlies, setBankFlies] = useState<BankFly[]>([]);
-
-//   // Sidebar / Drawer
-//   // const [drawerOpen, setDrawerOpen] = useState(false);
-//   // round-over is when the server has finished the reveal
-//   const isRoundOver =
-//     round?.roundStatus === "revealed" || round?.roundStatus === "completed";
-
-//   // ——— Wheel sizing
-//   const [wheelSize, setWheelSize] = useState(360);
-//   useEffect(() => {
-//     if (!phoneRef.current) return;
-//     const el = phoneRef.current;
-//     const ro = new ResizeObserver((entries) => {
-//       const w = entries[0].contentRect.width;
-//       const D = Math.max(260, Math.min(420, Math.floor(w * 0.82)));
-//       setWheelSize((prev) => (prev === D ? prev : D));
-//     });
-//     ro.observe(el);
-//     return () => ro.unobserve(el);
-//   }, []);
-//   const D = wheelSize;
-//   const R = D / 2;
-//   const ringR = R * 0.78;
-//   const btn = Math.round(D * 0.24);
-//   //const studsR = R * 0.92;
-//   const wheelTop = 35;
-//   const hubSize = Math.round(D * 0.32);
-//   const hubTop = wheelTop + R;
-
-//   // ——— Sounds
-//   const [prefs, setPrefs] = useState<Prefs>({
-//     master: 1,
-//     bet: 1,
-//     reveal: 1,
-//     win: 1,
-//     bg: 1,
-//   });
-//   const betAudioRef = useRef<HTMLAudioElement | null>(null);
-//   const revealAudioRef = useRef<HTMLAudioElement | null>(null);
-//   const winAudioRef = useRef<HTMLAudioElement | null>(null);
-//   const bgAudioRef = useRef<HTMLAudioElement | null>(null);
-//   const [audioReady, setAudioReady] = useState(false);
-
-//   const applyVolumes = useCallback(() => {
-//     const m = clamp01(prefs.master);
-//     if (betAudioRef.current)
-//       betAudioRef.current.volume = m * clamp01(prefs.bet);
-//     if (revealAudioRef.current)
-//       revealAudioRef.current.volume = m * clamp01(prefs.reveal);
-//     if (winAudioRef.current)
-//       winAudioRef.current.volume = m * clamp01(prefs.win);
-//     if (bgAudioRef.current) bgAudioRef.current.volume = m * clamp01(prefs.bg);
-
-//     // hop pool uses "reveal" slider by default
-//     hopPoolRef.current.forEach((a) => {
-//       a.volume = m * clamp01(prefs.reveal);
-//     });
-//   }, [prefs.master, prefs.bet, prefs.reveal, prefs.win, prefs.bg]);
-
-//   async function primeAllAudio() {
-//     const primeOne = async (a?: HTMLAudioElement | null) => {
-//       if (!a) return;
-//       try {
-//         a.muted = true;
-//         await a.play();
-//         a.pause();
-//         a.currentTime = 0;
-//         a.muted = false;
-//       } catch {}
-//     };
-
-//     await Promise.all([
-//       primeOne(betAudioRef.current),
-//       primeOne(revealAudioRef.current),
-//       primeOne(winAudioRef.current),
-//       primeOne(bgAudioRef.current),
-//       ...hopPoolRef.current.map((a) => primeOne(a)),
-//     ]);
-//     setAudioReady(true);
-//   }
-
-//   useEffect(() => {
-//     betAudioRef.current = new Audio(SND_BET);
-//     revealAudioRef.current = new Audio(SND_REVEAL);
-//     winAudioRef.current = new Audio(SND_WIN);
-//     bgAudioRef.current = new Audio(SND_BG_LOOP);
-
-//     // 🔊 build hop pool
-//     hopPoolRef.current = Array.from({ length: HOP_POOL_SIZE }, () => {
-//       const a = new Audio(SND_HOP);
-//       a.preload = "auto";
-//       return a;
-//     });
-
-//     if (bgAudioRef.current) {
-//       bgAudioRef.current.loop = true;
-//       bgAudioRef.current.volume = prefs.master * prefs.bg;
-//     }
-//     applyVolumes();
-//     // eslint-disable-next-line react-hooks/exhaustive-deps
-//   }, []);
-
-//   useEffect(() => {
-//     function arm() {
-//       primeAllAudio().then(() => bgAudioRef.current?.play().catch(() => {}));
-//       window.removeEventListener("pointerdown", arm);
-//       window.removeEventListener("keydown", arm);
-//       window.removeEventListener("touchstart", arm);
-//     }
-//     window.addEventListener("pointerdown", arm, { once: true });
-//     window.addEventListener("keydown", arm, { once: true });
-//     window.addEventListener("touchstart", arm, { once: true });
-//     return () => {
-//       window.removeEventListener("pointerdown", arm);
-//       window.removeEventListener("keydown", arm);
-//       window.removeEventListener("touchstart", arm);
-//     };
-//   }, []);
-
-//   useEffect(() => {
-//     applyVolumes();
-//     try {
-//       localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
-//     } catch {}
-//   }, [applyVolumes, prefs]);
-
-//   useEffect(() => {
-//     if (round && !isLoaded) setIsLoaded(true);
-//   }, [round, isLoaded]);
-//   useEffect(() => {
-//     const t = setTimeout(() => !isLoaded && setIsLoaded(true), 900);
-//     return () => clearTimeout(t);
-//   }, [isLoaded]);
-
-//   const canon = (s?: string | null) => (s ?? "").trim().toLowerCase();
-
-//   function buildUiData(setting?: any, round?: any) {
-//     // 1) Choose source: round.boxStats -> round.boxes -> setting.boxes
-//     const source = (
-//       round?.boxStats?.length
-//         ? round.boxStats
-//         : round?.boxes?.length
-//         ? round.boxes
-//         : setting?.boxes ?? []
-//     ) as any[];
-
-//     const all: UiBox[] = source.map((b) => ({
-//       key: canon(b.box ?? b.title),
-//       title: (b.title ?? b.box ?? "").trim(),
-//       icon: b.icon,
-//       multiplier: Number(b.multiplier ?? 0) || 0,
-//       group: b.group,
-//       total: Number(b.totalAmount ?? b.totalBet ?? 0) || 0,
-//       bettors: Number(b.bettorsCount ?? b.userCount ?? 0) || 0,
-//     }));
-
-//     // 2) Platforms (Pizza/Salad) by title
-//     const findByTitle = (t: string) =>
-//       all.find((x) => canon(x.title) === canon(t));
-//     const pizza = findByTitle("Pizza") ?? {
-//       key: "pizza",
-//       title: "Pizza",
-//       icon: "🍕",
-//       multiplier: 0,
-//       total: 0,
-//       bettors: 0,
-//       group: "Pizza",
-//     };
-//     const salad = findByTitle("Salad") ?? {
-//       key: "salad",
-//       title: "Salad",
-//       icon: "🥗",
-//       multiplier: 0,
-//       total: 0,
-//       bettors: 0,
-//       group: "Salad",
-//     };
-
-//     // 3) Wheel = everything except Pizza/Salad
-//     const settingOrder: string[] = (setting?.boxes ?? []).map((b: any) =>
-//       canon(b.title ?? b.box)
-//     );
-//     const wheel = all.filter((b) => b.title !== "Pizza" && b.title !== "Salad");
-//     wheel.sort((a, b) => {
-//       const ia = settingOrder.indexOf(a.key),
-//         ib = settingOrder.indexOf(b.key);
-//       if (ia === -1 && ib === -1) return 0;
-//       if (ia === -1) return 1;
-//       if (ib === -1) return -1;
-//       return ia - ib;
-//     });
-
-//     return { wheelBoxes: wheel, platforms: { Pizza: pizza, Salad: salad } };
-//   }
-
-//   // REMOVE old buildLiveBoxes() + liveBoxes useMemo
-//   const { wheelBoxes, platforms } = useMemo(
-//     () => buildUiData(setting, round),
-//     [setting?.boxes, round?.boxStats, round?.boxes]
-//   );
-
-//   // keep your variable name to avoid big changes:
-//   const liveBoxes = wheelBoxes;
-//   const sliceCount = liveBoxes.length || 1;
-
-//   // balance flourish
-//   const [lastBalance, setLastBalance] = useState<number | null>(null);
-//   const [gainCoins, setGainCoins] = useState<string[]>([]);
-//   useEffect(() => {
-//     if (!user) return;
-//     if (lastBalance !== null) {
-//       const delta = user.balance - lastBalance;
-//       if (delta > 0) {
-//         const n = Math.min(6, Math.max(2, Math.floor(delta / 5000)));
-//         const ids = Array.from({ length: n }, () => uid());
-//         setGainCoins((p) => [...p, ...ids]);
-//         setTimeout(() => setGainCoins((p) => p.slice(n)), 1200);
-//       }
-//     }
-//     setLastBalance(user.balance);
-//   }, [user?.balance, user, lastBalance]);
-
-//   /** ===== geometry / targets ===== */
-//   const getContainerRect = useCallback(() => {
-//     return phoneRef.current?.getBoundingClientRect() || null;
-//   }, []);
-//   const getWheelCenter = useCallback(() => {
-//     const cont = getContainerRect();
-//     const wheel = wheelRef.current?.getBoundingClientRect();
-//     if (cont && wheel) {
-//       return {
-//         x: wheel.left - cont.left + wheel.width / 2,
-//         y: wheel.top - cont.top + wheel.height / 2,
-//       };
-//     }
-//     return { x: (cont?.width ?? 0) / 2, y: 280 };
-//   }, [getContainerRect]);
-
-//   const slices: readonly FoodsKey[] = FOODS;
-//   const sliceAngle = 360 / slices.length;
-
-//   const hash01 = (str: string, s = 0) => {
-//     let h = 2166136261 ^ s;
-//     for (let i = 0; i < str.length; i++) h = (h ^ str.charCodeAt(i)) * 16777619;
-//     return ((h >>> 0) % 10000) / 10000;
-//   };
-
-//   const sliceButtonCenter = useCallback(
-//     (sliceIndex: number) => {
-//       const { x: cx, y: cy } = getWheelCenter();
-//       const angDeg = sliceIndex * sliceAngle - 90 + (wheelDegRef.current % 360);
-//       const ang = (angDeg * Math.PI) / 180;
-//       return { x: cx + ringR * Math.cos(ang), y: cy + ringR * Math.sin(ang) };
-//     },
-//     [getWheelCenter, sliceAngle, ringR]
-//   );
-
-//   const targetForBet = useCallback(
-//     (sliceIndex: number, betId: string) => {
-//       const c = sliceButtonCenter(sliceIndex);
-//       const a = 2 * Math.PI * hash01(betId, 3);
-//       const r = 8 + 18 * hash01(betId, 4);
-//       return { x: c.x + r * Math.cos(a), y: c.y + r * Math.sin(a) };
-//     },
-//     [sliceButtonCenter]
-//   );
-
-//   /** ===== history & leaderboard (per 10 rounds) ===== */
-//   const [winnersHistory, setWinnersHistory] = useState<ApiHistoryItem[]>([]);
-//   const [winsByPlayer, setWinsByPlayer] = useState<Record<string, number>>({});
-//   const [showLeaderboard, setShowLeaderboard] = useState(false);
-//   const [showTodayLeaderboard, setShowTodayLeaderboard] = useState(false);
-//   const [showGameRules, setShowGameRules] = useState(false);
-//   const [showRecord, setShowRecord] = useState(false);
-//   const [intermissionSec, setIntermissionSec] = useState<number | undefined>(
-//     undefined
-//   );
-//   const [blockCount, setBlockCount] = useState(0); // 0..10
-//   // --- Betting sweep (red border + finger pointer) ---
-//   const [sweepIdx, setSweepIdx] = useState<number | null>(null);
-
-//   const serverBlockRound = (
-//     typeof (round as any)?.blockRound === "number"
-//       ? (round as any).blockRound
-//       : typeof (round as any)?.indexInBlock === "number"
-//       ? (round as any).indexInBlock
-//       : typeof (round as any)?.roundNumber === "number"
-//       ? ((round as any).roundNumber % 10) + 1
-//       : undefined
-//   ) as number | undefined;
-
-//   const displayBlockRound = serverBlockRound ?? (blockCount % 10 || 10);
-
-//   /** ===== flies ===== */
-//   const spawnLocalFly = useCallback(
-//     (to: { x: number; y: number }, value: number) => {
-//       const cont = getContainerRect();
-//       const chip = chipRefs.current[value]?.getBoundingClientRect();
-//       const from =
-//         chip && cont
-//           ? {
-//               x: chip.left - cont.left + chip.width / 2,
-//               y: chip.top - cont.top + chip.height / 2,
-//             }
-//           : { x: to.x, y: to.y };
-//       const id = uid();
-//       setFlies((p) => [...p, { id, from, to, value }]);
-//       setTimeout(() => setFlies((p) => p.filter((f) => f.id !== id)), 1200);
-//     },
-//     [getContainerRect]
-//   );
-
-//   const spawnRemoteFly = useCallback(
-//     (to: { x: number; y: number }, value: number) => {
-//       const c = getWheelCenter();
-//       const from = {
-//         x: c.x + (Math.random() - 0.5) * 120,
-//         y: c.y - 180 + Math.random() * 60,
-//       };
-//       const id = uid(); //crypto.randomUUID();
-//       setRemoteFlies((p) => [...p, { id, from, to, value }]);
-//       setTimeout(
-//         () => setRemoteFlies((p) => p.filter((f) => f.id !== id)),
-//         1200
-//       );
-//     },
-//     [getWheelCenter]
-//   );
-
-//   /** ===== on bet echo ===== */
-
-//   /** ===== local pointer-decided winner ===== */
-//   const [forcedWinner, setForcedWinner] = useState<FoodsKey | null>(null);
-
-//   /** ===== clear per round / pause ===== */
-//   useEffect(() => {
-//     if (!round) return;
-//     if (currentRoundId && currentRoundId !== round.roundId) {
-//       setStacked([]);
-//       setFlies([]);
-//       setRemoteFlies([]);
-//       setPayoutFlies([]);
-//       setBankFlies([]);
-//       setForcedWinner(null);
-//     }
-//     setCurrentRoundId(round.roundId);
-//     if (round?.roundStatus === "revealed") {
-//       setStacked([]);
-//       setFlies([]);
-//       setRemoteFlies([]);
-//       setPayoutFlies([]);
-//       setBankFlies([]);
-//       setForcedWinner(null);
-//       //  setShowRoundWinners(false);
-//     }
-//   }, [round?.roundId, round?.roundStatus, currentRoundId]);
-
-//   /** ===== spin & settle ===== */
-//   const controls = useAnimation();
-//   //const lastSpinRoundRef = useRef<string | null>(null);
-
-//   const [wheelDeg, setWheelDeg] = useState(0);
-
-//   // when betting closes, hide transient flies
-//   useEffect(() => {
-//     if (round?.roundStatus === "revealing") {
-//       setFlies([]);
-//       setRemoteFlies([]);
-//     }
-//   }, [round?.roundStatus]);
-
-//   // Clear per round when SETTLED (after reveal is done)
-//   useEffect(() => {
-//     if (!round) return;
-//     if (currentRoundId && currentRoundId !== round.roundId) {
-//       /* clear arrays ... */
-//     }
-//     setCurrentRoundId(round.roundId);
-//     if (round.roundStatus === "completed") {
-//       setStacked([]);
-//       setFlies([]);
-//       setRemoteFlies([]);
-//       setPayoutFlies([]);
-//       setBankFlies([]);
-//       setForcedWinner(null);
-//       setShowRoundWinners(false);
-//     }
-//   }, [round?.roundId, round?.roundStatus, currentRoundId]);
-
-//   // Start fast highlight when we enter revealing
-//   useEffect(() => {
-//     if (!sliceCount) return;
-
-//     if (round?.roundStatus === "revealing") {
-//       // start fast hop
-//       landedOnceRef.current = false;
-//       startCursor(70);
-//     } else if (round?.roundStatus === "revealed") {
-//       // stop hopping immediately (keep hlIndex so settleOnWinner can decelerate from here)
-//       stopCursor();
-//       // DO NOT clear hlIndex here
-//     } else {
-//       // any other phase: fully clear ring
-//       stopCursor();
-//       setHlIndex(null);
-//     }
-//   }, [round?.roundStatus, sliceCount]);
-
-//   // When server reveals the winner, decelerate and land on that slice
-//   useEffect(() => {
-//     if (!sliceCount) return;
-
-//     if (round?.roundStatus === "revealing") {
-//       landedOnceRef.current = false;
-//       startRevealingCursor(); // fast→slow over the 5s
-//       return;
-//     }
-
-//     if (round?.roundStatus === "revealed") {
-//       // stop revealing loop immediately
-//       stopCursor();
-
-//       // find the winner and finish QUICKLY (≤~1s)
-//       const raw = (round as any)?.winnerBox ?? (round as any)?.winningBox;
-//       const winnerKey = norm(raw);
-//       const target = liveBoxes.findIndex((b) => norm(b.key) === winnerKey);
-
-//       if (target >= 0) {
-//         // fast settle: 0 extra laps, ~45ms start, +18ms/step, cap 140ms
-//         // was: settleOnWinner(target, { extraLaps: 0, startDelay: 45, addPerStep: 18, maxDelay: 140 });
-//         settleOnWinner(target, {
-//           extraLaps: 0, // keep 0 (1 lap may feel too long)
-//           startDelay: 60, // start a little slower
-//           addPerStep: 24, // decelerate more per hop
-//           maxDelay: 200, // allow a slower peak delay
-//         });
-//       } else {
-//         // winner is Pizza/Salad or unknown: no ring should keep moving
-//         stopAndClearHighlight();
-//         setTimeout(() => setShowRoundWinners(true), WINNER_POPUP_DELAY_MS);
-//       }
-//       return;
-//     }
-
-//     // any other phase
-//     stopAndClearHighlight();
-//   }, [
-//     round?.roundStatus,
-//     sliceCount,
-//     liveBoxes,
-//     (round as any)?.winnerBox,
-//     (round as any)?.winningBox,
-//   ]);
-
-//   // Cleanup on unmount
-//   useEffect(() => () => stopCursor(), []);
-
-//   function doRevealFlights(winner: FoodsKey) {
-//     const cont = getContainerRect();
-//     const bal = balanceRef.current?.getBoundingClientRect();
-//     const bank = bankRef.current?.getBoundingClientRect();
-
-//     /** ===== my winners -> balance ===== */
-//     if (user && bal && cont) {
-//       const myWins = stacked.filter(
-//         (c) => c.userId === user.id && c.fruit === winner
-//       );
-//       if (myWins.length) {
-//         if (winAudioRef.current && audioReady) {
-//           winAudioRef.current.pause();
-//           winAudioRef.current.currentTime = 0;
-//           winAudioRef.current.play().catch(() => {});
-//         }
-//         const flies = myWins.map((c, i) => {
-//           const idx = (slices as FoodsKey[]).indexOf(c.fruit);
-//           const p = targetForBet(idx, c.id);
-//           return {
-//             id: c.id,
-//             fromX: p.x - 20,
-//             fromY: p.y - 20,
-//             delay: i * 0.05,
-//           };
-//         });
-//         setPayoutFlies(flies);
-//         setTimeout(() => {
-//           setStacked((prev) =>
-//             prev.filter((c) => !(c.userId === user.id && c.fruit === winner))
-//           );
-//           setPayoutFlies([]);
-//         }, 1200 + myWins.length * 50);
-//       }
-//     }
-
-//     /** ===== losers -> bank ===== */
-//     if (bank && cont) {
-//       const losers = stacked.filter((c) => c.fruit !== winner);
-//       if (losers.length) {
-//         const bflies = losers.map((c, i) => {
-//           const idx = (slices as FoodsKey[]).indexOf(c.fruit);
-//           const p = targetForBet(idx, c.id);
-//           return {
-//             id: c.id,
-//             fromX: p.x - 20,
-//             fromY: p.y - 20,
-//             delay: i * 0.03,
-//           };
-//         });
-//         setBankFlies(bflies);
-//         setTimeout(() => {
-//           setStacked((prev) => prev.filter((c) => c.fruit === winner));
-//           setBankFlies([]);
-//         }, 1100 + losers.length * 30);
-//       }
-//     }
-
-//     /** ===== history + ranking + block counter ===== */
-//     const winnersThisRound = new Set(
-//       stacked.filter((c) => c.fruit === winner).map((c) => c.userId)
-//     );
-//     if (winnersThisRound.size) {
-//       setWinsByPlayer((prev) => {
-//         const next = { ...prev } as Record<string, number>;
-//         for (const uid of winnersThisRound) next[uid] = (next[uid] ?? 0) + 1;
-//         return next;
-//       });
-//     }
-//     // 1) Aggregate bet & win per user for *this round*
-//     const perUser: Record<string, { bet: number; win: number }> = {};
-//     for (const c of stacked) {
-//       // total bet: all coins the user placed this round (any fruit)
-//       perUser[c.userId] ??= { bet: 0, win: 0 };
-//       perUser[c.userId].bet += c.value;
-
-//       // total win: only coins on the winning fruit times multiplier
-//       if (c.fruit === winner) {
-//         perUser[c.userId].win += c.value * MULTIPLIER[winner];
-//       }
-//     }
-
-//     setTimeout(() => setShowRoundWinners(true), WINNER_POPUP_DELAY_MS);
-//     // increment block count; show leaderboard exactly every 10 rounds
-//     setBlockCount((prev) => {
-//       console.log("prevvvvvvvvvvvvvvvvvvvvvvv", prev);
-//       const next = prev + 1;
-//       if (displayBlockRound >= 10) {
-//         setShowLeaderboard(true);
-//         setIntermissionSec(INTERMISSION_SECS);
-//       }
-//       return next >= 10 ? 10 : next;
-//     });
-//   }
-
-//   // track echo events we've already processed by betId
-//   const pendingLocalBetRef = useRef<
-//     Array<{ key: BoxKey; value: number; until: number }>
-//   >([]);
-//   function markPendingLocal(key: BoxKey, value: number, ms = 700) {
-//     const now = Date.now();
-//     pendingLocalBetRef.current.push({ key, value, until: now + ms });
-//     // cleanup old
-//     pendingLocalBetRef.current = pendingLocalBetRef.current.filter(
-//       (x) => x.until > now
-//     );
-//   }
-//   function shouldSuppressEcho(key: BoxKey, value: number) {
-//     const now = Date.now();
-//     const i = pendingLocalBetRef.current.findIndex(
-//       (x) => x.key === key && x.value === value && x.until > now
-//     );
-//     if (i >= 0) {
-//       pendingLocalBetRef.current.splice(i, 1); // consume
-//       return true;
-//     }
-//     return false;
-//   }
-
-//   const onSliceClick = useCallback(
-//     async (key: BoxKey) => {
-//       console.log("fruittttttttttttttttttttttttttttttttttttt", key);
-//       const bal = balance ?? 0;
-//       if (bal <= 0) return notify("You don't have coin");
-//       if (bal < (selectedChip || 0))
-//         return notify("Not enough balance for this chip");
-//       if (round?.roundStatus !== "betting" || showLeaderboard || !selectedChip)
-//         return;
-
-//       // 🔹 Instant local fly (no wait)
-//       const idx = liveBoxes.findIndex((b) => b.key === key);
-//       if (idx >= 0) {
-//         const to = targetForBet(idx, uid()); // use a temp id just for offset variance
-//         spawnLocalFly(to, selectedChip);
-//         markPendingLocal(key, selectedChip); // so echo won't duplicate
-//       }
-
-//       // fire the request (no need to block UI)
-//       try {
-//         await placeBet(key, selectedChip);
-//       } catch (e) {
-//         // optional: rollback optimistic userBets or show toast
-//         notify("Bet failed");
-//       }
-//     },
-//     [
-//       balance,
-//       round?.roundStatus,
-//       showLeaderboard,
-//       isRoundOver,
-//       selectedChip,
-//       placeBet,
-//       liveBoxes,
-//       targetForBet,
-//       spawnLocalFly,
-//     ]
-//   );
-
-//   // helper (top-level with other utils)
-//   const clamp = (n: number, a: number, b: number) =>
-//     Math.min(b, Math.max(a, n));
-
-//   // Drive the hop while status === "revealing"
-//   function startRevealingCursor() {
-//     if (!sliceCount) return;
-//     stopCursor();
-//     cursorRunningRef.current = true;
-
-//     // reveal duration in ms (fallback 5000)
-//     const revealMs =
-//       (typeof setting?.revealDuration === "number"
-//         ? setting.revealDuration
-//         : 5) * 1000;
-
-//     // phaseEndAt already points to revealTime while revealing
-//     const endAt = phaseEndAt || Date.now() + revealMs;
-
-//     const step = () => {
-//       // stop if phase changed
-//       if (!cursorRunningRef.current || round?.roundStatus !== "revealing")
-//         return;
-
-//       // hop one slice
-//       setHlIndex((idx) => ((idx ?? 0) + 1) % sliceCount);
-//       setHlColor(randColor());
-//       playHop();
-
-//       // compute how much time has passed in revealing [0..1]
-//       const left = Math.max(0, endAt - Date.now());
-//       const k = 1 - clamp(left / Math.max(1, revealMs), 0, 1); // 0→1 from start→end
-
-//       // map k to delay: fast→slow, e.g. 50ms → 160ms
-//       const delay = Math.round(50 + k * 110);
-
-//       cursorTimeoutRef.current = window.setTimeout(
-//         step,
-//         delay
-//       ) as unknown as number;
-//     };
-
-//     // ensure an initial index
-//     setHlIndex((prev) => (prev == null ? 0 : prev));
-//     setHlColor(randColor());
-//     step();
-//   }
-
-//   // add near other refs:
-//   const seenEchoIdsRef = useRef<Set<string>>(new Set());
-//   //Suppress duplicate fly on echo
-//   useEffect(() => {
-//     if (!echoQueue.length || !round) return;
-
-//     const evt = echoQueue[0];
-//     // suppress exact duplicates by betId
-//     if (evt.betId && seenEchoIdsRef.current.has(evt.betId)) {
-//       shiftEcho();
-//       return;
-//     }
-//     if (evt.betId) seenEchoIdsRef.current.add(evt.betId);
-//     const keyRaw = resolveEventKey(evt) as BoxKey;
-
-//     const idx = liveBoxes.findIndex((b) => norm(b.key) === norm(keyRaw));
-//     if (idx < 0) {
-//       shiftEcho();
-//       return;
-//     }
-
-//     const to = targetForBet(idx, evt.betId);
-
-//     if (betAudioRef.current && audioReady) {
-//       betAudioRef.current.pause();
-//       betAudioRef.current.currentTime = 0;
-//       betAudioRef.current.play().catch(() => {});
-//     }
-
-//     // 🔹 Don’t double-spawn for your own just-clicked bet
-//     const isMine = evt.userId === user?.id;
-//     const suppress = isMine && shouldSuppressEcho(keyRaw, evt.value);
-
-//     if (!suppress) {
-//       if (isMine) spawnLocalFly(to, evt.value);
-//       else spawnRemoteFly(to, evt.value);
-//     }
-
-//     // keep stacked with server betId (no change)
-//     setStacked((prev) =>
-//       prev.some((c) => c.id === evt.betId)
-//         ? prev
-//         : [
-//             ...prev,
-//             {
-//               id: evt.betId,
-//               fruit: keyRaw as any,
-//               value: evt.value,
-//               userId: evt.userId,
-//             },
-//           ]
-//     );
-
-//     shiftEcho();
-//   }, [
-//     echoQueue,
-//     round?.roundId,
-//     liveBoxes,
-//     audioReady,
-//     user?.id,
-//     spawnLocalFly,
-//     spawnRemoteFly,
-//     shiftEcho,
-//     targetForBet,
-//   ]);
-
-//   const totalsForHot = useMemo(() => {
-//     const m: Record<BoxKey, number> = {};
-//     for (const bx of liveBoxes) m[bx.key] = bx.total ?? 0;
-//     return m;
-//   }, [liveBoxes]);
-
-//   const hotKey = useMemo<BoxKey | null>(() => {
-//     let best: BoxKey | null = null;
-//     let bestVal = 0;
-//     for (const bx of liveBoxes) {
-//       const v = totalsForHot[bx.key] ?? 0;
-//       if (v > bestVal) {
-//         bestVal = v;
-//         best = bx.key;
-//       }
-//     }
-//     return bestVal > 0 ? best : null;
-//   }, [liveBoxes, totalsForHot]);
-
-//   const ranking = useMemo(() => {
-//     const arr = Object.entries(winsByPlayer).map(([userId, wins]) => ({
-//       userId,
-//       wins,
-//     }));
-//     arr.sort((a, b) => (b.wins ?? 0) - (a.wins ?? 0));
-//     return arr;
-//   }, [winsByPlayer]);
-
-//   // settings panel
-//   const [settingsOpen, setSettingsOpen] = useState(false);
-
-//   /** ======== INTERMISSION COUNTDOWN ======== **/
-//   useEffect(() => {
-//     if (!showLeaderboard) return;
-//     if (typeof intermissionSec !== "number" || intermissionSec <= 0) return;
-
-//     const t = setInterval(() => {
-//       setIntermissionSec((s) => (typeof s === "number" && s > 0 ? s - 1 : 0));
-//     }, 1000);
-
-//     return () => clearInterval(t);
-//   }, [showLeaderboard, intermissionSec]);
-
-//   // when countdown finishes, auto-close & auto-start next round; also reset the block
-//   useEffect(() => {
-//     if (showLeaderboard && intermissionSec === 0) {
-//       // close modal
-//       setShowLeaderboard(false);
-//       setIntermissionSec(undefined);
-
-//       // reset block tallies for the next 10-round block
-//       setBlockCount(0);
-//       setWinsByPlayer({});
-//       //  setWinnersHistory([]);
-
-//       // tell the game to start the next round if it exposes a method
-//       if (typeof startNextRound === "function") {
-//         Promise.resolve(startNextRound()).catch(() => {});
-//       }
-//     }
-//   }, [showLeaderboard, intermissionSec, startNextRound]);
-
-//   /*   function handleWin(winner: FoodsKey) {
-//     const winAmount = userBets[winner] * MULTIPLIER[winner];
-//     console.log(`You won ${winAmount} coins on ${LABEL[winner]}!`);
-//     if (winAmount > 0) {
-//       // Prefer server-side credit if you have it:
-//       creditWin?.(winAmount).catch(() => {
-//         // fallback optimistic:
-//         updateBalance?.(winAmount);
-//       });
-//     }
-//   } */
-
-//   // ===== Initial game loader (fixed-time) =====
-//   const LOADER_DURATION_MS = 3000; // <- pick your fixed time (e.g., 2000-4000ms)
-
-//   const [bootLoading, setBootLoading] = useState(true);
-//   const [bootProgress, setBootProgress] = useState(0); // 0..1
-//   const [loggedIn, setLoggedIn] = useState(false);
-
-//   const [token, setToken] = useState<string | null>(null);
-//   useEffect(() => {
-//     setToken(localStorage.getItem("auth_token")); // set by your login
-//     setLoggedIn(!!localStorage.getItem("auth_token"));
-//   }, []);
-
-//   useEffect(() => {
-//     if (!bootLoading) return;
-//     let raf = 0;
-//     const start = performance.now();
-
-//     const tick = (now: number) => {
-//       const elapsed = now - start;
-//       const p = Math.min(1, elapsed / LOADER_DURATION_MS);
-//       setBootProgress(p);
-//       if (p < 1) {
-//         raf = requestAnimationFrame(tick);
-//       } else {
-//         // small grace so the bar reaches 100% visually
-//         setTimeout(() => setBootLoading(false), 150);
-//       }
-//     };
-
-//     raf = requestAnimationFrame(tick);
-//     return () => cancelAnimationFrame(raf);
-//   }, [bootLoading]);
-
-//   function handleLoginSuccess() {
-//     // your LoginPage should save token to localStorage
-//     setToken(localStorage.getItem("auth_token"));
-//     setLoggedIn(true);
-//   }
-
-//   useEffect(() => {
-//     let alive = true;
-//     (async () => {
-//       try {
-//         const data = await getRoundWinners();
-//         console.log(
-//           "roundddddddddddddddddddddddddddddddddd winnerrrrrrrrrrrrr",
-//           data
-//         ); // no arg uses current round id
-//         if (alive) setRoundWinners(data);
-//       } catch (err) {
-//         console.error(err);
-//       }
-//     })();
-
-//     return () => {
-//       alive = false;
-//     };
-//   }, [showRoundWinners, round?.roundStatus === "revealed"]);
-
-//   useEffect(() => {
-//     let alive = true;
-//     (async () => {
-//       try {
-//         const items = await getCurrentHistory(); // ← call it
-//         if (!alive) return;
-//         setWinnersHistory(
-//           items
-//             .slice()
-//             .sort(
-//               (a: ApiHistoryItem, b: ApiHistoryItem) =>
-//                 new Date(b.createdAt).getTime() -
-//                 new Date(a.createdAt).getTime()
-//             )
-//         );
-//       } catch (e: any) {
-//         if (!alive) return;
-//         console.log(e?.message || "Failed to load history");
-//       }
-//     })();
-
-//     return () => {
-//       alive = false;
-//     };
-//   }, [round?.roundStatus === "completed"]);
-
-//   useEffect(() => {
-//     let cancelled = false;
-//     (async () => {
-//       try {
-//         const res = await getDailyWins();
-//         if (!cancelled) setTodayWins(res?.totalWin ?? 0);
-//       } catch (e) {
-//         if (!cancelled) setTodayWins(null);
-//       }
-//     })();
-
-//     return () => {
-//       cancelled = true;
-//     };
-//   }, [round?.roundStatus === "revealed"]);
-
-//   function stopAndClearHighlight() {
-//     stopCursor(); // clears timers / running flag
-//     setHlIndex(null); // removes the ring from any slice
-//   }
-
-//   console.log("roundddddddddddddddddddd", round);
-//   // console.log("settinggggggggggggggggggggggggggg", setting);
-
-//   useEffect(() => {
-//     if (!sliceCount) return;
-//     if (round?.roundStatus !== "revealed") return;
-
-//     const raw = (round as any)?.winnerBox ?? (round as any)?.winningBox;
-//     const winnerKey = norm(raw);
-//     const target = liveBoxes.findIndex((b) => norm(b.key) === winnerKey);
-
-//     if (target >= 0) {
-//       // normal case: decelerate and land on the winning slice
-//       settleOnWinner(target);
-//     } else {
-//       // winner is not one of the wheel slices (e.g., Pizza/Salad or unknown)
-//       // stop and clear any ring so nothing stays highlighted
-//       stopAndClearHighlight();
-//       setTimeout(() => setShowRoundWinners(true), WINNER_POPUP_DELAY_MS);
-//     }
-//   }, [
-//     round?.roundStatus,
-//     (round as any)?.winnerBox,
-//     (round as any)?.winningBox,
-//     liveBoxes,
-//     sliceCount,
-//   ]);
-
-//   console.log("winHistoryyyyyyyyyyyyyyyyyyyyyyyyyy", ranking, token);
-
-//   useEffect(() => {
-//     if (round?.roundStatus !== "betting" || !sliceCount) {
-//       setSweepIdx(null);
-//       return;
-//     }
-//     let id: number;
-//     let i = 0;
-//     const tick = () => {
-//       setSweepIdx((prev) => (prev == null ? 0 : (prev + 1) % sliceCount));
-//       id = window.setTimeout(tick, 120); // speed of the red sweep; tweak 80–160ms
-//     };
-//     tick();
-//     return () => clearTimeout(id);
-//   }, [round?.roundStatus, sliceCount]);
-
-//   //console.log("roundddddddd",round)
-//   /** ==================== RENDER ==================== **/
-//   return (
-//     <div
-//       ref={pageRef}
-//       className="relative w-[360px] max-w-[360px] h-[700px] overflow-hidden mx-auto"
-//       style={{
-//         boxShadow: "0 20px 60px rgba(0,0,0,.35)",
-//         backgroundImage: `url("https://img.freepik.com/free-vector/amusement-park-with-circus-night-scene_1308-52610.jpg")`,
-//         backgroundSize: "cover",
-//         backgroundPosition: "center",
-//       }}
-//     >
-//       {/* initial loader */}
-//       <InitialLoader open={bootLoading} progress={bootProgress} withinFrame />
-//       {/* login page */}
-//       {!loggedIn && <LoginPage onLogin={handleLoginSuccess} />}
-//       {/* Game UI */}
-//       <div>
-//         <div className="absolute inset-0 bg-black/40 pointer-events-none" />
-
-//         {/* Phone frame */}
-//         <div
-//           ref={phoneRef}
-//           className="relative w-[360px] max-w-[360px] min-h-screen bg-white/5 backdrop-blur-sm border border-white/10 rounded-[8px] overflow-hidden"
-//           style={{
-//             boxShadow:
-//               "0 40px 140px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08)",
-//             perspective: 1200,
-//           }}
-//         >
-//           <div className="absolute top-2 left-2 right-2 z-30">
-//             <div className="grid grid-cols-2 gap-2">
-//               {/* Left Side: Exit + Record */}
-//               <div className="flex items-center space-x-2">
-//                 <button
-//                   aria-label="Exit"
-//                   className="p-2 rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 transition"
-//                   onClick={() => {
-//                     /* exit logic */
-//                   }}
-//                 >
-//                   <X size={18} />
-//                 </button>
-
-//                 <button
-//                   aria-label="Record"
-//                   className="p-2 rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 transition"
-//                   onClick={() => setShowRecord(true)}
-//                 >
-//                   <ScrollText size={18} />
-//                 </button>
-//               </div>
-
-//               {/* Right Side: Sound + Help */}
-//               <div className="flex items-center space-x-2 justify-end">
-//                 <button
-//                   aria-label="Sound Settings"
-//                   className="p-2 rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 transition"
-//                   onClick={() => setSettingsOpen(true)}
-//                 >
-//                   <Volume2 size={18} />
-//                 </button>
-
-//                 <button
-//                   aria-label="Help"
-//                   className="p-2 rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 transition"
-//                   onClick={() => setShowGameRules(true)}
-//                 >
-//                   <MessageCircleQuestionMark size={18} />
-//                 </button>
-//               </div>
-
-//               {/* Left Side: Block + Round Info */}
-//               <div className="text-white text-xs opacity-80 leading-tight">
-//                 {/*         <div>Today's Round: {roundNum}</div> */}
-//                 <div className="font-bold">Round: {displayBlockRound}</div>
-//               </div>
-
-//               {/* Right Side: Ping + Leaderboard */}
-//               <div className="flex justify-end items-center gap-2">
-//                 <PingDisplay ping={ping} />
-//                 <button
-//                   ref={bankRef}
-//                   aria-label="Leaderboard"
-//                   className="p-1 rounded-full bg-white/10 border border-white/20 text-orange-300 hover:bg-white/20 transition"
-//                   onClick={() => setShowLeaderboard(true)}
-//                 >
-//                   🏆
-//                 </button>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* INLINE TOAST / TIP (no external lib) */}
-//           <div
-//             className="pointer-events-none absolute inset-x-0 top-14 z-[60]"
-//             aria-live="polite"
-//             aria-atomic="true"
-//           >
-//             <AnimatePresence>
-//               {tip && (
-//                 <motion.div
-//                   key="tip"
-//                   initial={{ y: -16, opacity: 0 }}
-//                   animate={{ y: 0, opacity: 1 }}
-//                   exit={{ y: -16, opacity: 0 }}
-//                   transition={{ type: "spring", stiffness: 320, damping: 24 }}
-//                   className="mx-auto w-max max-w-[85%] rounded-full px-3 py-1.5 text-[12px] font-semibold text-white shadow-xl backdrop-blur-md"
-//                   style={{
-//                     background:
-//                       "linear-gradient(180deg, rgba(30,58,138,.85), rgba(37,99,235,.75))",
-//                     border: "1px solid rgba(255,255,255,.25)",
-//                     boxShadow:
-//                       "0 10px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12)",
-//                   }}
-//                 >
-//                   {tip}
-//                 </motion.div>
-//               )}
-//             </AnimatePresence>
-//           </div>
-
-//           {/* WHEEL AREA */}
-//           <div
-//             className="relative mt-10 pb-4"
-//             style={{ minHeight: wheelTop + D + 140 }}
-//           >
-//             {/* wheel disc */}
-//             <motion.div
-//               ref={wheelRef}
-//               className="absolute left-1/2 -translate-x-1/2 will-change-transform z-20"
-//               animate={controls}
-//               onUpdate={(latest) => {
-//                 if (typeof (latest as any).rotate === "number") {
-//                   const rot = (latest as any).rotate as number;
-//                   setWheelDeg(rot);
-//                   wheelDegRef.current = rot;
-//                 }
-//               }}
-//               style={{
-//                 top: wheelTop,
-//                 width: D,
-//                 height: D,
-//               }}
-//             >
-//               {/* rim highlight */}
-//               <div className="absolute inset-0" />
-
-//               {/* spokes */}
-//               {FOODS.map((_, i) => (
-//                 <div
-//                   key={`spoke-${i}`}
-//                   className="absolute left-1/2 top-1/2 origin-left"
-//                   style={{
-//                     width: R - 10,
-//                     height: 10,
-//                     background: "linear-gradient(180deg,#60a5fa,#2563eb)",
-//                     transform: `rotate(${i * (360 / FOODS.length)}deg)`,
-//                   }}
-//                 />
-//               ))}
-
-//               {/* per-slice buttons */}
-//               {liveBoxes.map((bx, i) => {
-//                 const angDeg = i * sliceAngle;
-//                 const rad = ((angDeg - 90) * Math.PI) / 180;
-//                 const cx = R + ringR * Math.cos(rad);
-//                 const cy = R + ringR * Math.sin(rad);
-
-//                 const disabled =
-//                   round?.roundStatus !== "betting" || showLeaderboard;
-//                 const isWinner =
-//                   forcedWinner === bx.key && round?.roundStatus !== "betting";
-
-//                 const balanceNow = balance ?? 0;
-//                 const noCoins = balanceNow <= 0;
-//                 const cannotAffordChip = balanceNow < (selectedChip || 0);
-//                 const visuallyDisabled =
-//                   disabled || noCoins || cannotAffordChip;
-
-//                 const isActive = hlIndex === i;
-//                 const isRevealing = round?.roundStatus === "revealing";
-//                 const dimSlice = isRevealing && !isActive; // <- darken only non-active slices WHILE revealing
-
-//                 return (
-//                   <div key={bx.key}>
-//                     <motion.button
-//                       whileTap={{ scale: visuallyDisabled ? 1 : 0.96 }}
-//                       whileHover={
-//                         prefersReducedMotion || visuallyDisabled
-//                           ? {}
-//                           : { translateZ: 10 }
-//                       }
-//                       onClick={() => {
-//                         if (noCoins) return notify("You don't have coin");
-//                         if (cannotAffordChip)
-//                           return notify("Not enough balance for this chip");
-//                         if (disabled || !selectedChip) return;
-//                         onSliceClick(bx.key);
-//                       }}
-//                       className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border shadow focus:outline-none focus:ring-2 focus:ring-sky-400 ${
-//                         isWinner
-//                           ? "animate-[blink_900ms_steps(2)_infinite] glow"
-//                           : ""
-//                       }`}
-//                       style={{
-//                         left: cx,
-//                         top: cy,
-//                         width: btn,
-//                         height: btn,
-//                         position: "absolute",
-//                         overflow: "hidden", // <- so overlay stays inside the circle
-//                         background: "linear-gradient(180deg,#2f63c7,#1f4290)",
-//                         borderStyle: "solid",
-//                         borderWidth: 5,
-//                         borderColor: isWinner
-//                           ? "#22c55e"
-//                           : isActive
-//                           ? "#FF0000"
-//                           : "rgba(255,255,255,.15)",
-//                         transition:
-//                           "border-color 80ms linear, border-width 80ms linear, box-shadow 80ms linear",
-//                       }}
-//                       aria-label={`Bet on ${bx.title} (pays x${bx.multiplier})`}
-//                       disabled={disabled}
-//                       aria-disabled={visuallyDisabled}
-//                       title={`Bet on ${bx.title} (pays x${bx.multiplier})`}
-//                     >
-//                       {/* DARK OVERLAY – toggles only while revealing & not active */}
-//                       <motion.div
-//                         aria-hidden
-//                         className="absolute inset-0 pointer-events-none"
-//                         style={{
-//                           // a richer “dark” look: slight vignette + black scrim
-//                           background:
-//                             "radial-gradient(120% 120% at 50% 35%, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.55) 100%), rgba(0,0,0,0.55)",
-//                           zIndex: 20,
-//                         }}
-//                         animate={{ opacity: dimSlice ? 1 : 0 }}
-//                         transition={{ duration: 0.15, ease: "linear" }}
-//                       />
-
-//                       {/* content kept above background, below overlay when dimming */}
-//                       <div
-//                         className="relative flex flex-col items-center justify-center w-full h-full rounded-full"
-//                         style={{
-//                           zIndex: 10,
-//                           transform: "rotate(calc(-1 * var(--wheel-rot)))",
-//                         }}
-//                       >
-//                         <div
-//                           aria-hidden
-//                           className="text-[28px] leading-none drop-shadow"
-//                         >
-//                           {bx.icon ??
-//                             (Object.prototype.hasOwnProperty.call(EMOJI, bx.key)
-//                               ? EMOJI[bx.key as FoodsKey]
-//                               : "❓")}
-//                         </div>
-
-//                         <div className="mt-1 text-[10px] text-white/90 leading-none font-bold capitalize">
-//                           win{" "}
-//                           <span className="font-extrabold">
-//                             x{bx.multiplier}
-//                           </span>
-//                         </div>
-
-//                         {hotKey === bx.key && (
-//                           <div
-//                             className="absolute -left-1 -top-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-500 text-white shadow"
-//                             style={{
-//                               border: "1px solid rgba(255,255,255,.25)",
-//                             }}
-//                             aria-label={`HOT: ${bx.title} has the highest total bets`}
-//                           >
-//                             HOT
-//                           </div>
-//                         )}
-
-//                         <div className="text-[10px] text-white">
-//                           Total: {fmt(bx.total)}
-//                         </div>
-//                       </div>
-//                     </motion.button>
-//                   </div>
-//                 );
-//               })}
-//             </motion.div>
-
-//             {/* Center hub */}
-//             <motion.div
-//               className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full grid place-items-center text-white/95 z-20"
-//               style={{
-//                 top: hubTop,
-//                 width: hubSize,
-//                 height: hubSize,
-//                 background: "linear-gradient(180deg,#2f63c7,#1f4290)",
-//                 boxShadow:
-//                   "0 20px 50px rgba(0,0,0,.55), inset 0 0 0 10px rgba(255,255,255,.15)",
-//                 border: "1px solid rgba(255,255,255,.25)",
-//               }}
-//               animate={{
-//                 boxShadow: [
-//                   "0 20px 50px rgba(0,0,0,.55), inset 0 0 0 10px rgba(255,255,255,.15), 0 0 20px rgba(255,200,50,.45), 0 0 40px rgba(255,200,50,.25)",
-//                   "0 20px 50px rgba(0,0,0,.55), inset 0 0 0 10px rgba(255,255,255,.15), 0 0 44px rgba(255,220,80,.8), 0 0 64px rgba(255,200,50,.5)",
-//                   "0 20px 50px rgba(0,0,0,.55), inset 0 0 0 10px rgba(255,255,255,.15), 0 0 20px rgba(255,200,50,.45), 0 0 40px rgba(255,200,50,.25)",
-//                 ],
-//               }}
-//               transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-//             >
-//               <img src="/cat_anomation.gif" className="w-64 absolute -top-8" />
-//               <div className="text-center relative">
-//                 <div className="text-[12px] font-semibold tracking-wide mt-9">
-//                   {bettingOpen && !showLeaderboard
-//                     ? "Place bets"
-//                     : round?.roundStatus === "revealing"
-//                     ? "Revealing…"
-//                     : round?.roundStatus === "revealed"
-//                     ? "revealed"
-//                     : round?.roundStatus === "completed"
-//                     ? "Next round in"
-//                     : "Preparing…"}
-//                 </div>
-
-//                 <div className="text-[28px] font-black tabular-nums drop-shadow-[0_1px_0_rgba(0,0,0,.35)] -mt-3">
-//                   {`${Math.floor(uiLeftMs / 1000)}s`}
-//                 </div>
-//               </div>
-//             </motion.div>
-//           </div>
-
-//           {/* Progress & platform */}
-//           <div
-//             className="absolute left-1/2 -translate-x-1/2 z-10"
-//             style={{
-//               top: wheelTop + R * 2.2,
-//               width: D * 0.94,
-//               height: Math.max(110, D * 0.34),
-//             }}
-//           >
-//             <div className="relative w-full h-full">
-//               {/* inverted-V (Λ) two-leg stand behind the wheel */}
-//               <div
-//                 className="absolute left-1/2 -translate-x-1/2 z-10 pointer-events-none"
-//                 style={{
-//                   top: wheelTop - R * 1.18, // raise/lower whole stand
-//                   width: D * 0.78, // overall spread
-//                   height: R * 1.4, // overall height
-//                 }}
-//               >
-//                 {/* TOP JOINT CAP */}
-//                 <div
-//                   className="absolute left-1/2 -translate-x-1/2"
-//                   style={{
-//                     top: 0,
-//                     width: D * 0.14,
-//                     height: 10,
-//                     background: "linear-gradient(180deg,#cfe7ff,#9ec6ef)",
-//                     border: "2px solid #0f2f4f",
-//                     borderRadius: 999,
-//                     boxShadow:
-//                       "0 6px 12px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.7)",
-//                   }}
-//                 />
-
-//                 {/* LEFT LEG (meets at top center, wider at base) */}
-//                 <div
-//                   className="absolute left-0 bottom-0"
-//                   style={{
-//                     width: "48%",
-//                     height: "100%",
-//                     background:
-//                       "linear-gradient(180deg,#2f7fc9,#286fb2 55%,#1f5a8e 100%)",
-//                     border: "3px solid #0f2f4f",
-//                     boxShadow:
-//                       "inset 0 10px 18px rgba(255,255,255,.18), 0 12px 28px rgba(0,0,0,.35)",
-//                     // narrow near the inner top (towards center), wide at bottom
-//                     clipPath: "polygon(6% 100%, 100% 100%, 86% 0%, 66% 0%)",
-//                   }}
-//                 ></div>
-
-//                 {/* RIGHT LEG (mirror of left) */}
-//                 <div
-//                   className="absolute right-0 bottom-0"
-//                   style={{
-//                     width: "48%",
-//                     height: "100%",
-//                     background:
-//                       "linear-gradient(180deg,#2a6fb0,#225d93 55%,#194a76 100%)",
-//                     border: "3px solid #0f2f4f",
-//                     boxShadow:
-//                       "inset 0 10px 18px rgba(255,255,255,.15), 0 12px 28px rgba(0,0,0,.35)",
-//                     clipPath: "polygon(34% 0%, 14% 0%, 0% 100%, 94% 100%)",
-//                   }}
-//                 >
-//                   <div
-//                     className="absolute inset-0 opacity-65 mix-blend-multiply"
-//                     style={{
-//                       backgroundImage: `
-//           repeating-linear-gradient(45deg, rgba(255,255,255,.12) 0 4px, transparent 4px 14px),
-//           repeating-linear-gradient(-45deg, rgba(255,255,255,.16) 0 4px, transparent 4px 14px)
-//         `,
-//                       maskImage:
-//                         "linear-gradient(to top, transparent 0%, black 14%, black 86%, transparent 100%)",
-//                       WebkitMaskImage:
-//                         "linear-gradient(to top, transparent 0%, black 14%, black 86%, transparent 100%)",
-//                     }}
-//                   />
-//                 </div>
-//               </div>
-
-//               {/* === Platforms (Pizza / Salad) === */}
-//               {(() => {
-//                 const pizza = platforms.Pizza;
-//                 const salad = platforms.Salad;
-
-//                 const winnerIs = (who: "Pizza" | "Salad") =>
-//                   (round?.roundStatus === "revealed" ||
-//                     round?.roundStatus === "completed") &&
-//                   round?.winnerBox === who;
-
-//                 const ringFor = (idx: 0 | 1) =>
-//                   platIdx === idx
-//                     ? platColor
-//                     : idx === 0
-//                     ? "#f97316"
-//                     : "#16a34a";
-
-//                 return (
-//                   <div className="absolute -left-8 -right-8 flex justify-between">
-//                     {/* PIZZA */}
-//                     <div className="flex flex-col items-center w-12">
-//                       <div
-//                         className="rounded-full p-1 z-30"
-//                         style={{
-//                           background: "#facc15",
-//                           borderStyle: "solid",
-//                           borderWidth:
-//                             platIdx === 0 || winnerIs("Pizza") ? 6 : 2,
-//                           borderColor: winnerIs("Pizza")
-//                             ? "#22c55e"
-//                             : ringFor(0),
-//                           boxShadow:
-//                             platIdx === 0 || winnerIs("Pizza")
-//                               ? `0 0 0 3px ${
-//                                   platIdx === 0 ? platColor : "#22c55e"
-//                                 }55,
-//                    0 0 18px ${platIdx === 0 ? platColor : "#22c55e"}66,
-//                    0 10px 24px rgba(0,0,0,.45)`
-//                               : "0 2px 4px rgba(0,0,0,.35)",
-//                           transition:
-//                             "border-color 60ms linear, border-width 60ms linear, box-shadow 60ms linear",
-//                         }}
-//                       >
-//                         <span className="text-3xl pb-1">
-//                           {pizza.icon ?? "🍕"}
-//                         </span>
-//                       </div>
-
-//                       <div className="bg-[#0864b4] text-white text-[8px] font-bold px-1 py-0.5 rounded-md -mt-2 shadow absolute z-30">
-//                         Total {fmt(pizza.total)}
-//                       </div>
-//                       <div className="bg-[#0864b4] text-white text-[10px] font-bold px-1 rounded-md -bottom-2 shadow absolute z-30">
-//                         {pizza.multiplier ? `${pizza.multiplier}x` : "—"}
-//                       </div>
-
-//                       {/* keep your svg + label */}
-//                       {/* ... */}
-//                     </div>
-
-//                     {/* SALAD */}
-//                     <div className="flex flex-col items-center w-12">
-//                       <div
-//                         className="rounded-full p-1 z-30"
-//                         style={{
-//                           background: "#4ade80",
-//                           borderStyle: "solid",
-//                           borderWidth:
-//                             platIdx === 1 || winnerIs("Salad") ? 6 : 2,
-//                           borderColor: winnerIs("Salad")
-//                             ? "#22c55e"
-//                             : ringFor(1),
-//                           boxShadow:
-//                             platIdx === 1 || winnerIs("Salad")
-//                               ? `0 0 0 3px ${
-//                                   platIdx === 1 ? platColor : "#22c55e"
-//                                 }55,
-//                    0 0 18px ${platIdx === 1 ? platColor : "#22c55e"}66,
-//                    0 10px 24px rgba(0,0,0,.45)`
-//                               : "0 2px 4px rgba(0,0,0,.35)",
-//                           transition:
-//                             "border-color 60ms linear, border-width 60ms linear, box-shadow 60ms linear",
-//                         }}
-//                       >
-//                         <span className="text-3xl">{salad.icon ?? "🥗"}</span>
-//                       </div>
-
-//                       <div className="bg-[#0864b4] text-white text-[8px] font-bold px-1 py-0.5 rounded-md -mt-2 shadow absolute z-30">
-//                         Total {fmt(salad.total)}
-//                       </div>
-//                       <div className="bg-[#0864b4] text-white text-[9px] font-bold px-1 rounded-md -mr-3 -bottom-2 shadow absolute z-30">
-//                         {salad.multiplier ? `${salad.multiplier}x` : "—"}
-//                       </div>
-
-//                       {/* keep your svg + label */}
-//                       {/* ... */}
-//                     </div>
-//                   </div>
-//                 );
-//               })()}
-
-//               <div
-//                 className="absolute left-1/2 -translate-x-1/2 rounded-2xl text-white font-extrabold"
-//                 style={{
-//                   bottom: 0,
-//                   width: D * 1.15,
-//                   height: 52,
-//                   background: "linear-gradient(180deg, #36a2ff, #2379c9)",
-//                   border: "4px solid #1e40af",
-//                   boxShadow: "0 5px 0 #1e3a8a",
-//                 }}
-//               >
-//                 <div className="h-full w-full flex items-center gap-2 px-2 overflow-hidden">
-//                   <div
-//                     className="shrink-0 rounded-xl px-3 py-1 text-[12px] font-bold"
-//                     style={{
-//                       background: "linear-gradient(180deg,#2f63c7,#1f4290)",
-//                       border: "1px solid rgba(255,255,255,.25)",
-//                       boxShadow:
-//                         "inset 0 1px 0 rgba(255,255,255,.35), 0 6px 12px rgba(0,0,0,.25)",
-//                     }}
-//                   >
-//                     Result
-//                   </div>
-
-//                   <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-//                     {(winnersHistory?.length ? [...winnersHistory] : [])
-//                       .filter(
-//                         (it, idx) => idx !== 0 || !!(it as any).winningBox
-//                       )
-//                       .map((k, idx) => {
-//                         const boxKey = norm(
-//                           (k as any).winningBox ?? (k as any).title
-//                         ) as FoodsKey;
-//                         const emoji = EMOJI[boxKey] ?? "❓";
-//                         const labelText =
-//                           LABEL[boxKey] ??
-//                           (k as any).box ??
-//                           (k as any).title ??
-//                           "";
-//                         return (
-//                           <div
-//                             key={`${
-//                               (k as any)?._id ?? (k as any)?.createdAt ?? idx
-//                             }-bar`}
-//                             className="relative shrink-0"
-//                           >
-//                             <div
-//                               className="w-7 h-7 rounded-xl grid place-items-center"
-//                               style={{
-//                                 background:
-//                                   "linear-gradient(180deg,#cde8ff,#b6dcff)",
-//                                 border: "1px solid #7fb4ff",
-//                                 boxShadow:
-//                                   "inset 0 1px 0 rgba(255,255,255,.7), 0 2px 0 #1e3a8a, 0 6px 14px rgba(0,0,0,.25)",
-//                               }}
-//                               title={labelText}
-//                             >
-//                               <span className="text-[16px] leading-none">
-//                                 {k.winningBox === "Pizza"
-//                                   ? "🍕"
-//                                   : k.winningBox === "Salad"
-//                                   ? "🥗"
-//                                   : emoji}
-//                               </span>
-//                             </div>
-//                             {idx === 0 && (
-//                               <div
-//                                 className="absolute left-1/2 -translate-x-1/2 -bottom-1 px-1.5 py-[1px] rounded-full text-[6px] font-black"
-//                                 style={{
-//                                   background:
-//                                     "linear-gradient(180deg,#ffd84d,#ffb800)",
-//                                   border: "1px solid rgba(0,0,0,.2)",
-//                                   boxShadow:
-//                                     "0 2px 0 rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.6)",
-//                                   color: "#3a2a00",
-//                                   whiteSpace: "nowrap",
-//                                 }}
-//                               >
-//                                 NEW
-//                               </div>
-//                             )}
-//                           </div>
-//                         );
-//                       })}
-
-//                     {winnersHistory.length === 0 && (
-//                       <div className="text-[11px] font-semibold text-white/90 opacity-90">
-//                         No results yet
-//                       </div>
-//                     )}
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* ===== CHIP BAR ===== */}
-//           <div className="px-3 relative">
-//             <div className="absolute left-4 right-4 -top-7 flex justify-between text-white text-[12px] font-semibold">
-//               <div className="px-2 rounded-full bg-blue-400/40 backdrop-blur-md border border-white/20 shadow">
-//                 Mine {"" + fmt(myBetTotal ?? 0)}
-//               </div>
-//               <div className="px-2 rounded-full bg-blue-400/40 backdrop-blur-md border border-white/20 shadow">
-//                 Total {fmt(round?.roundTotal ?? 0)}
-//               </div>
-//             </div>
-
-//             <div
-//               className="relative rounded-2xl px-2 py-5 border shadow-xl backdrop-blur-md"
-//               style={{
-//                 background:
-//                   "linear-gradient(180deg, rgba(30,58,138,.18), rgba(37,99,235,.10))",
-//                 borderColor: "rgba(255,255,255,0.35)",
-//                 boxShadow:
-//                   "0 20px 50px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06)",
-//               }}
-//             >
-//               <div
-//                 className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full text-white text-[11px] font-semibold px-3 py-0.5 border shadow-md"
-//                 style={{
-//                   background: "linear-gradient(180deg,#60a5fa,#2563eb)",
-//                   borderColor: "rgba(255,255,255,.25)",
-//                   boxShadow: "0 8px 18px rgba(37,99,235,.45)",
-//                 }}
-//               >
-//                 Select Bet Amount
-//               </div>
-
-//               <div className="mx-auto w-[92%] grid grid-cols-5 gap-3 place-items-center">
-//                 {setting?.chips.map((v: any) => {
-//                   const color = chipColorMap[v] || "#6b7280"; // default gray if no color mapped
-//                   const selected = selectedChip === v;
-//                   const afford = balance >= v;
-
-//                   return (
-//                     <motion.button
-//                       key={v}
-//                       ref={(el) => {
-//                         chipRefs.current[v] = el;
-//                         return undefined;
-//                       }}
-//                       whileTap={{ scale: 0.95, rotate: -2 }}
-//                       onClick={() => {
-//                         if (!afford) {
-//                           notify("Not enough balance for this chip");
-//                           return;
-//                         }
-//                         setSelectedChip(v);
-//                       }}
-//                       className={`relative rounded-full grid place-items-center transition-all duration-200 focus:outline-none`}
-//                       style={{
-//                         width: 48,
-//                         height: 48,
-//                         transformStyle: "preserve-3d",
-//                         boxShadow: selected
-//                           ? `0 0 0 3px rgba(255,255,255,.18), 0 10px 20px ${color}55`
-//                           : "0 8px 16px rgba(0,0,0,.35)",
-//                         border: `2px solid ${
-//                           selected ? color : "rgba(255,255,255,.14)"
-//                         }`,
-//                         background: `
-//             conic-gradient(
-//               #fff 0 15deg, ${color} 15deg 45deg,
-//               #fff 45deg 60deg, ${color} 60deg 90deg,
-//               #fff 90deg 105deg, ${color} 105deg 135deg,
-//               #fff 135deg 150deg, ${color} 150deg 180deg,
-//               #fff 180deg 195deg, ${color} 195deg 225deg,
-//               #fff 225deg 240deg, ${color} 240deg 270deg,
-//               #fff 270deg 285deg, ${color} 285deg 315deg,
-//               #fff 315deg 330deg, ${color} 330deg 360deg
-//             )
-//           `,
-//                       }}
-//                       title={`${v}`}
-//                       aria-label={`Select chip ${v}`}
-//                       aria-disabled={!afford}
-//                     >
-//                       <div
-//                         className="absolute rounded-full grid place-items-center text-[10px] font-extrabold tabular-nums"
-//                         style={{
-//                           width: 34,
-//                           height: 34,
-//                           background: selected
-//                             ? "radial-gradient(circle at 50% 40%, #ffffff, #f0f9ff 65%, #dbeafe)"
-//                             : "radial-gradient(circle at 50% 40%, #ffffff, #f3f4f6 65%, #e5e7eb)",
-//                           border: "2px solid rgba(0,0,0,.15)",
-//                           color: selected ? "#0b3a8e" : "#1f2937",
-//                           boxShadow: "inset 0 2px 0 rgba(255,255,255,.45)",
-//                         }}
-//                       >
-//                         {v >= 1000 ? v / 1000 + "K" : v}
-//                       </div>
-
-//                       {selected && (
-//                         <div
-//                           className="absolute inset-[-4px] rounded-full pointer-events-none"
-//                           style={{
-//                             border: `2px solid ${color}88`,
-//                             boxShadow: `0 0 0 4px ${color}33, 0 0 20px ${color}66`,
-//                           }}
-//                         />
-//                       )}
-//                     </motion.button>
-//                   );
-//                 })}
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Stats strip */}
-//           <div className="px-3 mt-3">
-//             <div
-//               className="relative rounded-xl border shadow-lg text-white px-2 py-2 grid grid-cols-2 gap-2"
-//               style={{
-//                 background: "linear-gradient(180deg, #36a2ff, #2379c9)",
-//                 borderColor: "#1e40af",
-//                 boxShadow:
-//                   "0 4px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25)",
-//               }}
-//             >
-//               <div
-//                 className="absolute -top-2 left-1/2 -translate-x-1/2 px-2 py-[2px] rounded-full text-[10px] font-bold border shadow"
-//                 style={{
-//                   background: "linear-gradient(180deg,#2f63c7,#1f4290)",
-//                   borderColor: "rgba(255,255,255,.25)",
-//                   boxShadow:
-//                     "0 3px 6px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25)",
-//                 }}
-//               >
-//                 Stats
-//               </div>
-
-//               <div className="rounded-lg p-1.5 text-white/95 border border-white/20 bg-black/15 flex flex-col items-center">
-//                 <div className="text-[11px] opacity-90 leading-none">Coins</div>
-//                 <div
-//                   ref={balanceRef}
-//                   className="text-[14px] font-bold tabular-nums leading-tight"
-//                 >
-//                   💎 {balance ?? 0}
-//                 </div>
-//               </div>
-//               {/* Avatar */}
-//               <div
-//                 className="grid h-7 w-7 place-items-center overflow-hidden rounded-full border ring-0 absolute top-4 left-1/2 -translate-x-1/2"
-//                 style={{
-//                   borderColor: "rgba(255,255,255,.25)",
-//                   boxShadow: "0 2px 8px rgba(0,0,0,.25)",
-//                   background:
-//                     "linear-gradient(180deg,rgba(255,255,255,.85),rgba(255,255,255,.7))",
-//                 }}
-//               >
-//                 <span className="text-lg text-black/50">👤</span>
-//               </div>
-//               <div
-//                 onClick={() => setShowTodayLeaderboard(true)}
-//                 className="rounded-lg p-1.5 text-white/95 border border-white/20 bg-black/15 flex flex-col items-center"
-//               >
-//                 <div className="text-[11px] opacity-90 leading-none">
-//                   Today's Win
-//                 </div>
-//                 <div className="text-[14px] font-bold tabular-nums leading-tight">
-//                   💎 {todayWins ?? 0}
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* transient & payout flies */}
-//           <div className="pointer-events-none absolute inset-0 z-30">
-//             <AnimatePresence>
-//               {flies.map((f) => (
-//                 <motion.div
-//                   key={f.id}
-//                   initial={{
-//                     x: f.from.x - 1,
-//                     y: f.from.y - 1,
-//                     opacity: 0,
-//                     scale: 0.85,
-//                   }}
-//                   animate={{
-//                     x: f.to.x - 10,
-//                     y: f.to.y - 8,
-//                     opacity: 1,
-//                     scale: 1,
-//                     rotate: 360,
-//                   }}
-//                   exit={{ opacity: 0, scale: 0.7 }}
-//                   transition={{ type: "spring", stiffness: 220, damping: 22 }}
-//                   className="absolute"
-//                 >
-//                   <Coin />
-//                 </motion.div>
-//               ))}
-//               {remoteFlies.map((f) => (
-//                 <motion.div
-//                   key={f.id}
-//                   initial={{
-//                     x: f.from.x - 1,
-//                     y: f.from.y - 1,
-//                     opacity: 0,
-//                     scale: 0.85,
-//                   }}
-//                   animate={{
-//                     x: f.to.x - 10,
-//                     y: f.to.y - 10,
-//                     opacity: 1,
-//                     scale: 1,
-//                     rotate: 360,
-//                   }}
-//                   exit={{ opacity: 0, scale: 0.7 }}
-//                   transition={{ type: "spring", stiffness: 220, damping: 22 }}
-//                   className="absolute w-10 h-10"
-//                 >
-//                   <Coin />
-//                 </motion.div>
-//               ))}
-//             </AnimatePresence>
-//           </div>
-
-//           <div className="pointer-events-none absolute inset-0">
-//             <AnimatePresence>
-//               {payoutFlies.map((f) => (
-//                 <motion.div
-//                   key={`p-${f.id}`}
-//                   initial={{ x: f.fromX, y: f.fromY, opacity: 0, scale: 0.9 }}
-//                   animate={{
-//                     x:
-//                       (balanceRef.current?.getBoundingClientRect()?.left ?? 0) -
-//                       (phoneRef.current?.getBoundingClientRect()?.left ?? 0) +
-//                       (balanceRef.current?.getBoundingClientRect()?.width ??
-//                         40) /
-//                         2,
-//                     y:
-//                       (balanceRef.current?.getBoundingClientRect()?.top ?? 0) -
-//                       (phoneRef.current?.getBoundingClientRect()?.top ?? 0) +
-//                       (balanceRef.current?.getBoundingClientRect()?.height ??
-//                         40) /
-//                         2,
-//                     opacity: 1,
-//                     scale: 1,
-//                     rotate: 360,
-//                   }}
-//                   exit={{ opacity: 0, scale: 0.7 }}
-//                   transition={{
-//                     type: "spring",
-//                     stiffness: 240,
-//                     damping: 24,
-//                     delay: f.delay,
-//                   }}
-//                   className="absolute w-10 h-10"
-//                 >
-//                   <Coin />
-//                 </motion.div>
-//               ))}
-
-//               {bankFlies.map((f) => (
-//                 <motion.div
-//                   key={`b-${f.id}`}
-//                   initial={{ x: f.fromX, y: f.fromY, opacity: 0, scale: 0.9 }}
-//                   animate={{
-//                     x:
-//                       (bankRef.current?.getBoundingClientRect()?.left ?? 0) -
-//                       (phoneRef.current?.getBoundingClientRect()?.left ?? 0) +
-//                       (bankRef.current?.getBoundingClientRect()?.width ?? 40) /
-//                         5,
-//                     y:
-//                       (bankRef.current?.getBoundingClientRect()?.top ?? 0) -
-//                       (phoneRef.current?.getBoundingClientRect()?.top ?? 0) +
-//                       (bankRef.current?.getBoundingClientRect()?.height ?? 40) /
-//                         5,
-//                     opacity: 1,
-//                     scale: 1,
-//                     rotate: 360,
-//                   }}
-//                   exit={{ opacity: 0, scale: 0.7 }}
-//                   transition={{
-//                     type: "spring",
-//                     stiffness: 240,
-//                     damping: 24,
-//                     delay: f.delay,
-//                   }}
-//                   className="absolute w-10 h-10"
-//                 >
-//                   <Coin />
-//                 </motion.div>
-//               ))}
-//             </AnimatePresence>
-//           </div>
-
-//           {/* MODALS */}
-//           <LeaderboardModal
-//             open={showLeaderboard}
-//             onClose={() => {
-//               setShowLeaderboard(false);
-//               setIntermissionSec(undefined);
-//             }}
-//             onStartNow={() => setIntermissionSec(0)}
-//             intermissionSec={intermissionSec}
-//           />
-//           <TodayLeaderboardModal
-//             open={showTodayLeaderboard}
-//             onClose={() => {
-//               setShowTodayLeaderboard(false);
-//             }}
-//             // onStartNow={() => setIntermissionSec(0)}
-//           />
-//           <GameRules
-//             open={showGameRules}
-//             onClose={() => setShowGameRules(false)}
-//           />
-//           <Record open={showRecord} onClose={() => setShowRecord(false)} />
-
-//           {/* Settings bottom sheet */}
-//           <SettingsBottomSheet
-//             open={settingsOpen}
-//             onClose={() => setSettingsOpen(false)}
-//             prefs={prefs}
-//             setPrefs={setPrefs}
-//           />
-
-//           <RoundWinnersModal
-//             open={showRoundWinners}
-//             onClose={() => setShowRoundWinners(false)}
-//             data={roundWinners}
-//           />
-//         </div>
-
-//         {/* gain flourish */}
-//         <div className="pointer-events-none fixed inset-0">
-//           <AnimatePresence>
-//             {gainCoins.map((id, i) => {
-//               const cont = phoneRef.current?.getBoundingClientRect();
-//               const bal = balanceRef.current?.getBoundingClientRect();
-//               const sx = cont ? cont.left + cont.width / 2 : 0;
-//               const sy = cont ? cont.top + 520 : 0;
-//               const tx = cont && bal ? bal.left + bal.width / 2 - 20 : sx;
-//               const ty = cont && bal ? bal.top + bal.height / 2 - 20 : sy;
-//               return (
-//                 <motion.div
-//                   key={id}
-//                   initial={{ x: sx, y: sy, opacity: 0, scale: 0.85 }}
-//                   animate={{ x: tx, y: ty, opacity: 1, scale: 1, rotate: 360 }}
-//                   exit={{ opacity: 0, scale: 0.7 }}
-//                   transition={{
-//                     type: "spring",
-//                     stiffness: 220,
-//                     damping: 20,
-//                     delay: i * 0.05,
-//                   }}
-//                   className="absolute w-10 h-10"
-//                 >
-//                   <Coin />
-//                 </motion.div>
-//               );
-//             })}
-//           </AnimatePresence>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-// /** ==================== Types ==================== **/
-// type StackedCoin = {
-//   id: string;
-//   fruit: FoodsKey;
-//   value: number;
-//   userId: string;
-// };
-// type Fly = {
-//   id: string;
-//   from: { x: number; y: number };
-//   to: { x: number; y: number };
-//   value: number;
-// };
-// type PayoutFly = { id: string; fromX: number; fromY: number; delay: number };
-// type BankFly = { id: string; fromX: number; fromY: number; delay: number };
-
-// function Coin() {
-//   return (
-//     <div
-//       className="w-5 h-5 rounded-full border shadow-md flex items-center justify-center"
-//       style={{
-//         background:
-//           "radial-gradient(circle at 40% 30%, #fde68a, #fbbf24 55%, #f59e0b)",
-//         borderColor: "#fbbf24",
-//         boxShadow:
-//           "0 14px 40px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.45)",
-//       }}
-//     >
-//       <div
-//         className="w-5 h-5 rounded-full flex items-center justify-center"
-//         style={{
-//           background:
-//             "radial-gradient(circle at 40% 30%, #fff3c4, #fcd34d 60%, #fbbf24)",
-//           border: "1px solid #facc15",
-//         }}
-//       >
-//         <span className="text-amber-900 text-[5px] font-extrabold">$</span>
-//       </div>
-//     </div>
-//   );
-// }
-
-// /** utils */
-// function fmt(n: number) {
-//   const format = (num: number, suffix: string) => {
-//     const formatted = num.toFixed(1);
-//     return formatted.endsWith(".0")
-//       ? `${parseInt(formatted)}${suffix}`
-//       : `${formatted}${suffix}`;
-//   };
-
-//   if (n >= 1_000_000) return format(n / 1_000_000, "M");
-//   if (n >= 1_000) return format(n / 1_000, "K");
-//   return new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(
-//     n
-//   );
-// }
-
-// function clamp01(n: number) {
-//   return Math.max(0, Math.min(1, n));
-// }
