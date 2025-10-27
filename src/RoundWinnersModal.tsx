@@ -295,7 +295,6 @@
 //   );
 // }
 
-
 import { AnimatePresence, motion } from "framer-motion";
 import { EMOJI } from "./App";
 
@@ -328,14 +327,14 @@ const fmt = (n: number) =>
   n >= 1_000_000
     ? `${Math.round(n / 1_000_000)}M`
     : n >= 1_000
-      ? `${Math.round(n / 1_000)}K`
-      : new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n);
+    ? `${Math.round(n / 1_000)}K`
+    : new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n);
 
 /* get emoji from your EMOJI map or a default */
 export function getEmojiForBox(name?: string): string {
   if (!name) return "❓";
   const key = name.toLowerCase() as keyof typeof EMOJI;
-  return EMOJI[key] ?? "🥗";
+  return EMOJI[key] ?? (name === "Pizza" ? "🍕" : "🥗");
 }
 
 /* =========================================================
@@ -344,8 +343,8 @@ export function getEmojiForBox(name?: string): string {
 export default function RoundWinnersModal({
   open,
   onClose,
-  data,             // API response for the just-finished round
-  secondsLeft,      // OPTIONAL: show "5s" style countdown (e.g., intermission)
+  data, // API response for the just-finished round
+  secondsLeft, // OPTIONAL: show "5s" style countdown (e.g., intermission)
 }: {
   open: boolean;
   onClose: () => void;
@@ -359,12 +358,14 @@ export default function RoundWinnersModal({
     data?.topWinners?.slice().sort((a, b) => b.amountWon - a.amountWon) ?? [];
   const top3 = topWinners.slice(0, 3);
 
-  const meEntry = myId ? topWinners.find((x) => x.userId === myId) ?? null : null;
+  const meEntry = myId
+    ? topWinners.find((x) => x.userId === myId) ?? null
+    : null;
   const myBet = meEntry?.totalBet ?? 0;
   const myWin = meEntry?.amountWon ?? 0;
 
   const emoji = getEmojiForBox(data?.winningBox);
-
+console.log(data)
   return (
     <AnimatePresence>
       {open && (
@@ -372,14 +373,14 @@ export default function RoundWinnersModal({
           className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-        //  exit={{ opacity: 0 }}
+          //  exit={{ opacity: 0 }}
           onClick={onClose}
         >
           {/* Card */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-          //  exit={{ opacity: 0, scale: 0.97, y: 6 }}
+            //  exit={{ opacity: 0, scale: 0.97, y: 6 }}
             transition={{ type: "spring", stiffness: 220, damping: 22 }}
             onClick={(e) => e.stopPropagation()}
             className="relative w-[92%] max-w-sm rounded-[22px] text-white"
@@ -411,7 +412,12 @@ export default function RoundWinnersModal({
               <motion.div
                 initial={{ y: -16, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.05 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 18,
+                  delay: 0.05,
+                }}
               >
                 <RibbonBlueTwisted>THIS ROUND</RibbonBlueTwisted>
               </motion.div>
@@ -453,11 +459,14 @@ export default function RoundWinnersModal({
                 &nbsp;'s Result:&nbsp;
                 <span className="inline-flex items-center gap-1">
                   <span className="text-2xl">{emoji}</span>
-                  <span className="opacity-95 text-xl"><span>
-                    {["Meat", "Sausage", "Skewer", "Ham"].some(item => data?.winningBox?.includes(item))
-                      ? "🍕"
-                      : "🥗"}
-                  </span>
+                  <span className="opacity-95 text-xl">
+                    <span>
+                      {["Meat", "Sausage", "Skewer", "Ham", "Pizza"].some((item) =>
+                        data?.winningBox?.includes(item)
+                      )
+                        ? "🍕"
+                        : "🥗"}
+                    </span>
                   </span>
                 </span>
               </div>
@@ -468,7 +477,12 @@ export default function RoundWinnersModal({
                 <motion.div
                   className="text-6xl select-none"
                   animate={{ rotate: [-4, 4, -4] }}
-                  transition={{ repeat: Infinity, repeatDelay: 1.2, duration: 1.2, ease: "easeInOut" }}
+                  transition={{
+                    repeat: Infinity,
+                    repeatDelay: 1.2,
+                    duration: 1.2,
+                    ease: "easeInOut",
+                  }}
                   title="Meow!"
                 >
                   {myBet < myWin ? "😸" : "😿"}
@@ -507,7 +521,8 @@ export default function RoundWinnersModal({
                   <div className="grid grid-cols-3 gap-2">
                     {top3.map((p, idx) => {
                       const place = idx + 1;
-                      const crown = place === 1 ? "👑" : place === 2 ? "🥈" : "🥉";
+                      const crown =
+                        place === 1 ? "👑" : place === 2 ? "🥈" : "🥉";
                       return <WinnerBadge key={p.userId} p={p} crown={crown} />;
                     })}
                   </div>
@@ -522,13 +537,7 @@ export default function RoundWinnersModal({
 }
 
 /* ---------- Sub-components ---------- */
-function WinnerBadge({
-  p,
-  crown,
-}: {
-  p: RoundWinnerEntry;
-  crown: string;
-}) {
+function WinnerBadge({ p, crown }: { p: RoundWinnerEntry; crown: string }) {
   return (
     <div className="flex flex-col items-center gap-1 min-w-[88px]">
       <div className="text-xl leading-none">{crown}</div>
@@ -537,7 +546,8 @@ function WinnerBadge({
         style={{
           background: "radial-gradient(circle at 40% 30%,#fff,#f1f7ff)",
           border: "2px solid rgba(255,215,128,.9)",
-          boxShadow: "0 3px 8px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.6)",
+          boxShadow:
+            "0 3px 8px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.6)",
         }}
       >
         <span className="text-[#0f355e]/60 text-[10px] leading-none">
@@ -547,11 +557,13 @@ function WinnerBadge({
       <div
         className="px-2 py-[1px] rounded font-bold text-[10px] max-w-[100px] truncate"
         style={{
-          background: "linear-gradient(180deg,#ffd27a 0%, #f3b635 60%, #e49a22 100%)",
+          background:
+            "linear-gradient(180deg,#ffd27a 0%, #f3b635 60%, #e49a22 100%)",
           color: "#0f355e",
           border: "1px solid rgba(190,120,40,.6)",
           textShadow: "0 1px 0 rgba(255,255,255,.6)",
-          boxShadow: "inset 0 1px 0 rgba(255,255,255,.8), 0 2px 6px rgba(0,0,0,.15)",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,.8), 0 2px 6px rgba(0,0,0,.15)",
         }}
       >
         {p.username ?? "—"}
@@ -559,7 +571,8 @@ function WinnerBadge({
       <div
         className="rounded-full px-2 py-[1px] text-[10px] tabular-nums"
         style={{
-          background: "linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35))",
+          background:
+            "linear-gradient(180deg, rgba(0,0,0,.55), rgba(0,0,0,.35))",
           border: "1px solid rgba(255,255,255,.18)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,.25)",
         }}
@@ -575,8 +588,10 @@ function GoldDot() {
     <span
       className="inline-block w-10 h-[6px] rounded-full"
       style={{
-        background: "linear-gradient(180deg,#ffd27a 0%, #f3b635 60%, #e49a22 100%)",
-        boxShadow: "0 0 8px rgba(255,205,120,.65), inset 0 1px 0 rgba(255,255,255,.7)",
+        background:
+          "linear-gradient(180deg,#ffd27a 0%, #f3b635 60%, #e49a22 100%)",
+        boxShadow:
+          "0 0 8px rgba(255,205,120,.65), inset 0 1px 0 rgba(255,255,255,.7)",
       }}
     />
   );
@@ -627,7 +642,8 @@ function RibbonBlueTwisted({ children }: { children: React.ReactNode }) {
           background:
             "linear-gradient(180deg,#36a2ff 0%, #2379c9 60%, #1b5d9c 100%)",
           textShadow: "0 1px 0 rgba(0,0,0,.25)",
-          boxShadow: "0 6px 12px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.6)",
+          boxShadow:
+            "0 6px 12px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.6)",
           border: "2px solid rgba(255,255,255,.5)",
         }}
       >

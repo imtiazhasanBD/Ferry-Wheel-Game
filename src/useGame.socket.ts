@@ -28,14 +28,12 @@ export type BoxStat = {
 };
 
 export type RoundModel = {
-  // server ids & numbering
   roundId?: string;
   _id?: string;
   roundNumber?: string | number;
 
-  // server status; we'll also expose a client-friendly `status`
   roundStatus: ServerRoundStatus;
-  status?: "OPEN" | "CLOSED" | "SETTLED" | "Preparing..."; // <- for App.tsx
+  status?: "OPEN" | "CLOSED" | "SETTLED" | "Preparing..."; 
 
   // clocks
   timeLeftMs: number;
@@ -103,8 +101,8 @@ type Settings = {
   supportedLanguages: string[];
   theme: string;
   boxes: BoxStat[];
-  createdAt: string; // ISO string
-  updatedAt: string; // ISO string
+  createdAt: string;
+  updatedAt: string; 
   __v: number;
 };
 
@@ -165,13 +163,12 @@ export function useGame() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [myBetTotal, setMyBetTotal] = useState(0);
   const [companyWallet, setCompanyWallet] = useState(0);
-  const [time, setTime] = useState(0); // mirrors round.timeLeftMs if you want separate
+  const [time, setTime] = useState(0); 
   const [setting, setSetting] = useState<Settings | null>()
   const [ping, setPing] = useState(0)
 console.log("timeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",time)
 
   const currentRoundId = round?._id ?? (round as any)?.roundId ?? null;
-  // const winnersCache = useRef<Map<string, RoundWinnerEntry[]>>(new Map());
 
   // ----- echo queue (for animations) -----
   const [echoQueue, setEchoQueue] = useState<BetEcho[]>([]);
@@ -189,7 +186,7 @@ console.log("timeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",time)
 
   useMemo(() => new Set(FOODS), []);
 
-  /** ---- ticker helpers (robust to React 18 StrictMode) ---- */
+  /** ---- ticker helpers ---- */
   const phaseIntervalRef = useRef<number | null>(null);
   const phaseEndRef = useRef<number>(0);
 
@@ -214,35 +211,65 @@ console.log("timeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",time)
     }
   }, []);
 
-  useEffect(() => () => stopTicker(), [stopTicker]); // cleanup on unmount
+  useEffect(() => () => stopTicker(), [stopTicker]);
 
   /** ---- connect & initial balance ---- */
-  useEffect(() => {
-    if (!socket) return;
+useEffect(() => {
+  if (!socket) return;
 
-    const onConnect = () => {
-      setSid(socket.id ?? null);
-      socket.emit("join", { room: "table:alpha" }, () => { });
-      socket.emit("get_balance", {}, (res: any) => {
-        if (res?.success && typeof res.balance === "number") {
-          setBalance(res.balance);
-          setUserPersist((u) => ({ ...u, balance: res.balance }));
+  const onConnect = async () => {
+    setSid(socket.id ?? null);
+
+    // Join game room first
+    socket.emit("join", { room: "table:alpha" }, (ackState: any) => {
+      if (ackState?.roundStatus) {
+        setRound(ackState);
+      }
+    });
+
+    // Get balance
+    socket.emit("get_balance", {}, (res: any) => {
+      if (res?.success && typeof res.balance === "number") {
+        setBalance(res.balance);
+        setUserPersist((u) => ({ ...u, balance: res.balance }));
+      }
+    });
+
+    try {
+      const res: any = await emitAck(socket as any, "getCurrentRound", {});
+      if (res?.success && res?.round) {
+        setRound(res.round);
+      } else {
+        const token = getAuthToken();
+        const r = await fetch(`${API_BASE}/api/v1/rounds/current`, {
+          headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+        if (r.ok) {
+          const data = await r.json();
+          const roundPayload = data?.round ?? data; 
+          if (roundPayload?.roundStatus) setRound(roundPayload);
         }
-      });
-    };
+      }
+    } catch (e) {
+      console.warn("[hydrate] failed to fetch current round", e);
+    }
+  };
 
-    const onDisconnect = (_reason: string) => {
-      setSid(null);
-      // keep local UI; server will re-sync on reconnect
-    };
+  const onDisconnect = (_reason: string) => {
+    setSid(null);
+  };
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-    };
-  }, [socket, setUserPersist]);
+  socket.on("connect", onConnect);
+  socket.on("disconnect", onDisconnect);
+  return () => {
+    socket.off("connect", onConnect);
+    socket.off("disconnect", onDisconnect);
+  };
+}, [socket, setUserPersist]);
+
 
   /** ---- round lifecycle & timers (using start/end/reveal) ---- */
   useEffect(() => {
@@ -257,8 +284,8 @@ console.log("timeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",time)
 
     const onStart = (d: any) => upsert(d);
     const onUpdate = (d: any) => upsert(d);
-    const onClosed = (d: any) => upsert(d);       // usually flips to "revealing"
-    const onWinner = (d: any) => upsert(d);       // still in "revealing" typically
+    const onClosed = (d: any) => upsert(d);      
+    const onWinner = (d: any) => upsert(d);     
     const onEnded = (d: any) => {
       // fully done
       setRound((prev) => ({ ...d, prev }));
@@ -321,7 +348,7 @@ console.log("timeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",time)
     };
   }, [socket, startTicker, stopTicker]);
 
-  /** ---- bootstrap static settings once (for Preparing state) ---- */
+  /** ----  ( Preparing state) ---- */
   useEffect(() => {
     if (!round.roundId && round.roundStatus === "Preparing...") {
       fetch(`${API_BASE}/api/v1/settings/retrive`)
@@ -404,7 +431,7 @@ console.log("timeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",time)
     return Array.isArray(json?.bettingHistory) ? json.bettingHistory : [];
   }, [round?.roundStatus === "revealed"]);
 
-  /** ======= Betting API -> also push local echo for instant FX ======= */
+  /** ======= Betting API  ======= */
   const placeBet = useCallback(
     async (fruit: FoodsKey, value: number) => {
       if (!socket) return;
@@ -425,7 +452,7 @@ console.log("timeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",time)
         setUserPersist((u) => ({ ...u, balance: res.balance }));
       }
 
-      // Optimistic local echo (server will usually echo too)
+      // (server will usually echo too)
       const betId = uid();
       setEchoQueue((q) => [
         ...q,
@@ -482,12 +509,10 @@ console.log("timeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",time)
     } catch { }
   }, [round.roundId]);
 
-  /** Expose everything you need in App.tsx */
   return {
-    // core
     user,
-    round,         // has .status ("OPEN" | "CLOSED" | "SETTLED"), timeLeftMs, start/end/reveal
-    time,          // mirrors timeLeftMs for your progress calc
+    round,        
+    time,      
     placeBet,
     echoQueue,
     shiftEcho,
@@ -497,12 +522,12 @@ console.log("timeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",time)
     getRoundWinners,
     getCurrentHistory,
 
-    // extras
+
     setting,
-    balance,       // mirrors user.balance (pick one to display)
+    balance,     
     sid,
-    myBetTotal,    // your total bet this round
+    myBetTotal,   
     companyWallet,
-    ping // house reserve
+    ping 
   };
 }

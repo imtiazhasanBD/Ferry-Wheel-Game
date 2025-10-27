@@ -1412,7 +1412,7 @@ export default function App() {
       className="relative w-[360px] max-w-[360px] h-[700px] overflow-hidden mx-auto"
       style={{
         boxShadow: "0 20px 60px rgba(0,0,0,.35)",
-        backgroundImage: `url("https://img.freepik.com/free-vector/amusement-park-with-circus-night-scene_1308-52610.jpg")`,
+        backgroundImage: `url("https://media.istockphoto.com/id/531242568/vector/idyllic-landscape.jpg?s=612x612&w=0&k=20&c=uhOPDMPS6EMH1tedVeNQZonb4tuiglHkDpQQ-4jh7gg=")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -1423,12 +1423,10 @@ export default function App() {
       {!loggedIn && <LoginPage onLogin={handleLoginSuccess} />}
       {/* Game UI */}
       <div>
-        <div className="absolute inset-0 bg-black/40 pointer-events-none" />
-
         {/* Phone frame */}
         <div
           ref={phoneRef}
-          className="relative w-[360px] max-w-[360px] min-h-screen bg-white/5 backdrop-blur-sm border border-white/10 rounded-[8px] overflow-hidden"
+          className="relative w-[360px] max-w-[360px] min-h-screen bg-white/5  border border-white/10 rounded-[8px] overflow-hidden"
           style={{
             boxShadow:
               "0 40px 140px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08)",
@@ -1640,13 +1638,14 @@ export default function App() {
                         width: btn,
                         height: btn,
                         position: "absolute",
-                        background: "linear-gradient(180deg,#60a5fa,#2563eb)",
+                        background:
+                          "linear-gradient(180deg, #ffffff 0%, #ffffff 50%, #62c1ef 50%, #62c1ef 100%)",
                         borderStyle: "solid",
                         borderWidth: 5,
                         borderColor: isWinner
-                          ? "#22c55e"
+                          ? "rgb(39, 82, 172)"
                           : isActive || isSweep
-                          ? "#FF0000"
+                          ? "#FFA300"
                           : "rgb(39, 82, 172)",
                         transition:
                           "border-color 80ms linear, border-width 80ms linear, box-shadow 80ms linear",
@@ -1697,13 +1696,13 @@ export default function App() {
                       <div
                         className="relative flex flex-col items-center justify-center w-full h-full rounded-full"
                         style={{
-                         // zIndex: 10,
+                          // zIndex: 10,
                           transform: "rotate(calc(-1 * var(--wheel-rot)))",
                         }}
                       >
                         <div
                           aria-hidden
-                          className="text-[28px] leading-none drop-shadow"
+                          className="text-[24px] leading-none drop-shadow"
                         >
                           {bx.icon ??
                             (Object.prototype.hasOwnProperty.call(EMOJI, bx.key)
@@ -1769,14 +1768,16 @@ export default function App() {
                     : round?.roundStatus === "revealing"
                     ? "Revealing…"
                     : round?.roundStatus === "revealed"
-                    ? "revealed"
+                    ? "result"
                     : round?.roundStatus === "completed"
                     ? "Next round in"
                     : "Preparing…"}
                 </div>
 
                 <div className="text-[28px] font-black tabular-nums drop-shadow-[0_1px_0_rgba(0,0,0,.35)] -mt-3">
-                  {`${Math.floor(uiLeftMs / 1000)}s`}
+                  {round?.roundStatus === "revealed"
+                    ? "0s"
+                    : `${Math.floor(uiLeftMs / 1000)}s`}
                 </div>
               </div>
             </motion.div>
@@ -1798,65 +1799,114 @@ export default function App() {
               {(() => {
                 const pizza = platforms.Pizza;
                 const salad = platforms.Salad;
-                const isRevealing =
-                  round?.roundStatus === "revealing" ||
-                  round?.roundStatus === "revealed";
 
                 const winnerIs = (who: "Pizza" | "Salad") =>
                   round?.roundStatus === "revealed" && round?.winnerBox === who;
+
+                const isRevealing = round?.roundStatus === "revealing";
+                const isRevealed = round?.roundStatus === "revealed";
+
+                const darkFor = (idx: 0 | 1) => {
+                  if (isRevealing) {
+                    return platIdx !== idx;
+                  }
+                  if (isRevealed) {
+                    const w = winnerIs(idx === 0 ? "Pizza" : "Salad");
+                    return !w;
+                  }
+                  return false;
+                };
+                const DarkScrim = ({
+                  show,
+                  rounded,
+                }: {
+                  show: boolean;
+                  rounded: string;
+                }) =>
+                  show ? (
+                    <div
+                      aria-hidden
+                      className={`absolute inset-0 pointer-events-none ${rounded}`}
+                      style={{
+                        background:
+                          "radial-gradient(120% 120% at 50% 40%, rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 55%, rgba(0,0,0,.65) 100%), rgba(0,0,0,.45)",
+                        transition: "opacity .2s linear",
+                      }}
+                    />
+                  ) : null;
+
+                const Circle = ({
+                  idx,
+                  bg,
+                  icon,
+                }: {
+                  idx: 0 | 1;
+                  bg: string;
+                  icon: React.ReactNode;
+                }) => (
+                  <div
+                    className="relative rounded-full p-1 z-30"
+                    style={{
+                      background: bg,
+                      boxShadow: "0 2px 4px rgba(0,0,0,.35)",
+                      transition: "opacity .2s ease",
+                    }}
+                  >
+                    <span className="text-3xl">{icon}</span>
+                    <DarkScrim show={darkFor(idx)} rounded="rounded-full" />
+                  </div>
+                );
+
+                const TopBadge = ({
+                  idx,
+                  children,
+                }: {
+                  idx: 0 | 1;
+                  children: React.ReactNode;
+                }) => (
+                  <div className="top-0 -mt-2 shadow absolute z-30">
+                    <div className="bg-[#0864b4] text-white text-[8px] font-bold px-1 py-0.5 rounded-md">
+                      {children}
+                    </div>
+                    <DarkScrim show={darkFor(idx)} rounded="rounded-md" />
+                  </div>
+                );
+
+                const BottomBadge = ({
+                  idx,
+                  children,
+                  extraClass = "",
+                }: {
+                  idx: 0 | 1;
+                  children: React.ReactNode;
+                  extraClass?: string;
+                }) => (
+                  <div className={` shadow absolute z-30 ${extraClass}`}>
+                    <div className="bg-[#0864b4] text-white text-[9px] font-bold px-1 rounded-md">
+                      {children}
+                    </div>
+                    <DarkScrim show={darkFor(idx)} rounded="rounded-md" />
+                  </div>
+                );
 
                 return (
                   <div className="absolute -left-8 -right-8 flex justify-between">
                     {/* PIZZA */}
                     <div className="flex flex-col items-center w-12">
-                      <div
-                        className="rounded-full p-1 z-30"
-                        style={{
-                          background: "#facc15",
-                          opacity: isRevealing || winnerIs("Pizza") ? 0.3 : 1,
-                          transition: "opacity 0.3s ease", // Smooth opacity transition
-                          boxShadow:
-                            platIdx === 0 || winnerIs("Pizza")
-                              ? "0 0 18px #22c55e, 0 10px 24px rgba(0, 0, 0, 0.45)"
-                              : "0 2px 4px rgba(0, 0, 0, 0.35)",
-                        }}
-                      >
-                        <span className="text-3xl pb-1">
-                          {pizza.icon ?? "🍕"}
-                        </span>
-                      </div>
-
-                      <div className="bg-[#0864b4] text-white text-[8px] font-bold px-1 py-0.5 rounded-md -mt-2 shadow absolute z-30">
-                        Total {fmt(pizza.total)}
-                      </div>
-                      <div className="bg-[#0864b4] text-white text-[10px] font-bold px-1 rounded-md -bottom-2 shadow absolute z-30">
+                      <Circle idx={0} bg="#facc15" icon={pizza.icon ?? "🍕"} />
+                      <TopBadge idx={0}>Total {fmt(pizza.total)}</TopBadge>
+                      <BottomBadge idx={0} extraClass="-bottom-2">
                         {pizza.multiplier ? `${pizza.multiplier}x` : "—"}
-                      </div>
+                      </BottomBadge>
                     </div>
 
                     {/* SALAD */}
                     <div className="flex flex-col items-center w-12">
-                      <div
-                        className="rounded-full p-1 z-30"
-                        style={{
-                          background: "#4ade80",
-                          opacity: isRevealing || winnerIs("Salad") ? 0.3 : 1,
-                          transition: "opacity 0.3s ease",
-                          boxShadow:
-                            platIdx === 1 || winnerIs("Salad")
-                              ? "0 0 18px #22c55e, 0 10px 24px rgba(0, 0, 0, 0.45)"
-                              : "0 2px 4px rgba(0, 0, 0, 0.35)",
-                        }}
-                      >
-                        <span className="text-3xl">{salad.icon ?? "🥗"}</span>
-                      </div>
-
-                      <div className="bg-[#0864b4] text-white text-[8px] font-bold px-1 py-0.5 rounded-md -mt-2 shadow absolute z-30">
-                        Total {fmt(salad.total)}
-                      </div>
-                      <div className="bg-[#0864b4] text-white text-[9px] font-bold px-1 rounded-md -mr-3 -bottom-2 shadow absolute z-30">
+                      <Circle idx={1} bg="#4ade80" icon={salad.icon ?? "🥗"} />
+                      <TopBadge idx={1}>Total {fmt(salad.total)}</TopBadge>
+                      <BottomBadge idx={1} extraClass="-mr-3 -bottom-2">
                         {salad.multiplier ? `${salad.multiplier}x` : "—"}
-                      </div>
+                      </BottomBadge>
                     </div>
                   </div>
                 );
@@ -1875,7 +1925,7 @@ export default function App() {
               >
                 <div className="h-full w-full flex items-center gap-2 px-2 overflow-hidden">
                   <div
-                    className="shrink-0 rounded-xl px-3 py-1 text-[12px] font-bold"
+                    className="shrink-0 rounded-xl px-2 py-1 text-[12px] font-bold"
                     style={{
                       background: "linear-gradient(180deg,#2f63c7,#1f4290)",
                       border: "1px solid rgba(255,255,255,.25)",
@@ -1961,10 +2011,10 @@ export default function App() {
           {/* ===== CHIP BAR ===== */}
           <div className="px-3 relative">
             <div className="absolute left-4 right-4 -top-7 flex justify-between text-white text-[12px] font-semibold">
-              <div className="px-2 rounded-full bg-blue-400/40 backdrop-blur-md border border-white/20 shadow">
+              <div className="px-2 rounded-full bg-blue-500 backdrop-blur-md border border-white/20 shadow">
                 Mine {"" + fmt(myBetTotal ?? 0)}
               </div>
-              <div className="px-2 rounded-full bg-blue-400/40 backdrop-blur-md border border-white/20 shadow">
+              <div className="px-2 rounded-full bg-blue-500 backdrop-blur-md border border-white/20 shadow">
                 Total {fmt(round?.roundTotal ?? 0)}
               </div>
             </div>
