@@ -29,15 +29,12 @@ export default function TodayLeaderboardModal({
     async function fetchLeaderboard() {
       setLoading(true);
       try {
-        const res = await fetch(
-          `${API_BASE}/api/v1/bettings/leaderboard/top-winners-today`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-          }
-        );
+        const res = await fetch(`${API_BASE}/api/v1/bet/leaderboard-today`, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
         if (!res.ok) throw new Error("Failed to fetch leaderboard");
         const data = await res.json();
 
@@ -72,16 +69,18 @@ export default function TodayLeaderboardModal({
       {open && (
         <motion.div
           className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm"
-          onClick={onClose}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          // onClick={onClose}
+          // initial={{ opacity: 0 }}
+          // animate={{ opacity: 1 }}
+          // exit={{ opacity: 0 }}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            // initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            // animate={{ opacity: 1, scale: 1, y: 0 }}
+            // exit={{ opacity: 0, scale: 0.97, y: 6 }}
+            // transition={{ type: "spring", stiffness: 220, damping: 22 }}
+            initial={{ opacity: 0, scale: 0.95, y: 14 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.97, y: 6 }}
-            transition={{ type: "spring", stiffness: 220, damping: 22 }}
             className="relative w-[92%] max-w-sm rounded-[28px] px-2 pt-4 pb-5"
             style={{
               background:
@@ -94,14 +93,14 @@ export default function TodayLeaderboardModal({
           >
             <div className="absolute -top-9 left-1/2 -translate-x-1/2">
               <motion.div
-                initial={{ y: -18, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{
-                  type: "spring",
-                  stiffness: 300,
-                  damping: 18,
-                  delay: 0.05,
-                }}
+                // initial={{ y: -18, opacity: 0 }}
+                // animate={{ y: 0, opacity: 1 }}
+                // transition={{
+                //   type: "spring",
+                //   stiffness: 300,
+                //   damping: 18,
+                //   delay: 0.05,
+                // }}
               >
                 <RibbonBlue />
               </motion.div>

@@ -27,6 +27,12 @@ export type BoxStat = {
   multiplier: number;
 };
 
+export type user_perbox_total = {
+  totalAmount: number;
+  count: number;
+  box: string;
+};
+
 export type RoundModel = {
   roundId?: string;
   _id?: string;
@@ -43,8 +49,9 @@ export type RoundModel = {
   prepareTime?: string | number;
 
   // misc
+  userPerBoxTotal?: {};
   winningBox?: string;
-  boxStats?: BoxStat[];
+  boxStats?: user_perbox_total;
   roundTotal?: number;
   companyCut?: number;
   distributedAmount?: number;
@@ -293,9 +300,11 @@ useEffect(() => {
       stopTicker();
     };
 
-    // lightweight phase tick from server (if you send periodic updates)
+    // lightweight phase tick from server
     const phaseUpdate = (d: any) => upsert(d);
-    const pingServer = (d: any) => upsert(d);
+    const user_perbox_total = (d: any) => upsert(d);
+    const roundTotalBet = (d: any) => upsert(d);
+
     // bet accepted/down-balance
     const onAccepted = ({ bet }: any) => {
       const amt = bet?.amount || 0;
@@ -312,7 +321,7 @@ useEffect(() => {
 
     const onTotalUsersCount = ({ count }: any) => setTotalUsers(count);
     const onUserBetTotal = ({ totalUserBet }: any) => setMyBetTotal(totalUserBet);
-    const onCompanyWallet = ({ wallet }: any) => setCompanyWallet(wallet);
+  //  const onCompanyWallet = ({ wallet }: any) => setCompanyWallet(wallet);
 
     socket.on("roundStarted", onStart);
     socket.on("roundUpdated", onUpdate);
@@ -320,13 +329,14 @@ useEffect(() => {
     socket.on("winnerRevealed", onWinner);
     socket.on("roundEnded", onEnded);
     socket.on("phaseUpdate", phaseUpdate);
-    socket.on("roundTotalBet", pingServer);
+    socket.on("user_perbox_total", user_perbox_total);
+    socket.on("roundTotalBet", roundTotalBet);
 
     socket.on("bet_accepted", onAccepted);
     socket.on("balanceUpdate", onBalance);
     socket.on("user_bet_total", onUserBetTotal);
     socket.on("joinedTotalUsers", onTotalUsersCount);
-    socket.on("get_company_wallet", onCompanyWallet);
+    //socket.on("get_company_wallet", onCompanyWallet);
 
     return () => {
       socket.off("roundStarted", onStart);
@@ -335,13 +345,14 @@ useEffect(() => {
       socket.off("winnerRevealed", onWinner);
       socket.off("roundEnded", onEnded);
       socket.off("phaseUpdate", phaseUpdate);
-      socket.off("roundTotalBet", pingServer);
+      socket.off("user_perbox_total", user_perbox_total);
+      socket.off("roundTotalBet", roundTotalBet);
 
       socket.off("bet_accepted", onAccepted);
       socket.off("balanceUpdate", onBalance);
       socket.off("user_bet_total", onUserBetTotal);
       socket.off("joinedTotalUsers", onTotalUsersCount);
-      socket.off("get_company_wallet", onCompanyWallet);
+     // socket.off("get_company_wallet", onCompanyWallet);
 
       if (localPulseInterval) clearInterval(localPulseInterval);
       stopTicker();
@@ -379,7 +390,7 @@ useEffect(() => {
     const interval = setInterval(updatePing, 2000); // every 2s
     return () => clearInterval(interval);
   }, [socket]);
-  console.log("pinggggggggggggggggggggggggggggggggggggggggggggggg", totalUsers)
+ /// console.log("pinggggggggggggggggggggggggggggggggggggggggggggggg", totalUsers)
 
 
   /** ======= Winners APIs ======= */
@@ -391,7 +402,7 @@ useEffect(() => {
       const id = String(rawId);
 
       const token = getAuthToken();
-      const url = `${API_BASE}/api/v1/bettings/top-winners/${encodeURIComponent(id)}`;
+      const url = `${API_BASE}/api/v1/bet/top-winners/${encodeURIComponent(id)}`;
 
       const res = await fetch(url, {
         headers: {
@@ -414,7 +425,7 @@ useEffect(() => {
   const getCurrentHistory = useCallback(async (): Promise<ApiHistoryItem[]> => {
     const token = getAuthToken();
 
-    const res = await fetch(`${API_BASE}/api/v1/bettings/current-history`, {
+    const res = await fetch(`${API_BASE}/api/v1/bet/current-history`, {
       headers: {
         Accept: "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),

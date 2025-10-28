@@ -11,7 +11,11 @@ import {
   ScrollText,
   MessageCircleQuestionMark,
 } from "lucide-react";
-import { useGame, type ApiHistoryItem } from "./useGame.socket";
+import {
+  useGame,
+  type ApiHistoryItem,
+  type user_perbox_total,
+} from "./useGame.socket";
 import { FOODS, type FoodsKey } from "./types";
 import LeaderboardModal from "./LeaderboardModal";
 import GameRules from "./GameRules";
@@ -559,7 +563,7 @@ export default function App() {
   const canon = (s?: string | null) => (s ?? "").trim().toLowerCase();
 
   function buildUiData(setting?: any, round?: any) {
-    // 1) Choose source: round.boxStats -> round.boxes -> setting.boxes
+    // Choose source
     const source = (
       round?.boxStats?.length
         ? round.boxStats
@@ -578,7 +582,7 @@ export default function App() {
       bettors: Number(b.bettorsCount ?? b.userCount ?? 0) || 0,
     }));
 
-    // 2) Platforms (Pizza/Salad) by title
+    // Platforms (Pizza/Salad) by title
     const findByTitle = (t: string) =>
       all.find((x) => canon(x.title) === canon(t));
     const pizza = findByTitle("Pizza") ?? {
@@ -600,7 +604,7 @@ export default function App() {
       group: "Salad",
     };
 
-    // 3) Wheel = everything except Pizza/Salad
+    // Wheel = everything except Pizza/Salad
     const settingOrder: string[] = (setting?.boxes ?? []).map((b: any) =>
       canon(b.title ?? b.box)
     );
@@ -1412,7 +1416,7 @@ export default function App() {
       className="relative w-[360px] max-w-[360px] h-[700px] overflow-hidden mx-auto"
       style={{
         boxShadow: "0 20px 60px rgba(0,0,0,.35)",
-        backgroundImage: `url("https://media.istockphoto.com/id/531242568/vector/idyllic-landscape.jpg?s=612x612&w=0&k=20&c=uhOPDMPS6EMH1tedVeNQZonb4tuiglHkDpQQ-4jh7gg=")`,
+        backgroundImage: `url(/bg-image.jpg)`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -1478,7 +1482,7 @@ export default function App() {
               {/* Left Side: Block + Round Info */}
               <div className="text-white text-xs opacity-80 leading-tight">
                 {/*         <div>Today's Round: {roundNum}</div> */}
-                <div className="font-bold">Round: {displayBlockRound}</div>
+                <div className="font-bold">Round: {round?.roundNumber}</div>
               </div>
 
               {/* Right Side: Ping + Leaderboard */}
@@ -1553,7 +1557,7 @@ export default function App() {
 
               {/* Spokes */}
               {FOODS.map((_, i) => {
-                const rotationDeg = i * (360 / FOODS.length); // Calculate the rotation for each spoke
+                const rotationDeg = i * (360 / FOODS.length);
                 const spokeLength = R - 10;
 
                 return (
@@ -1604,13 +1608,50 @@ export default function App() {
                   disabled || noCoins || cannotAffordChip;
 
                 const isActive = hlIndex === i;
-                const isRevealing =
-                  round?.roundStatus === "revealing" ||
-                  round?.roundStatus === "revealed";
-                const dimSlice = isRevealing && !isActive; // <- darken only non-active slices WHILE revealing
+                const roundPhase = round?.roundStatus as
+                  | "betting"
+                  | "revealing"
+                  | "revealed"
+                  | "completed"
+                  | undefined;
+
+                const platformWinner =
+                  roundPhase !== "betting" &&
+                  (round?.winnerBox === "Pizza" || round?.winnerBox === "Salad")
+                    ? (round?.winnerBox as "Pizza" | "Salad")
+                    : null;
+
+                const isRevealingPhase = roundPhase === "revealing";
+                const isAfterReveal =
+                  roundPhase === "revealed" || roundPhase === "completed";
+
+                // highlight logic for dark overlay
+                let dimSlice = false;
+
+                if (isRevealingPhase) {
+                  // while revealing: only the active hopping slice stays bright
+                  dimSlice = !isActive;
+                } else if (isAfterReveal) {
+                  if (platformWinner) {
+                    // platform won: brighten all slices that belong to that platform group
+                    dimSlice = bx.group !== platformWinner; // dark if group doesn't match
+                  } else if (forcedWinner) {
+                    // normal wheel win: only the winning slice stays bright
+                    dimSlice = bx.key !== forcedWinner;
+                  } else {
+                    dimSlice = false;
+                  }
+                } else {
+                  // betting / preparing: no dark overlay
+                  dimSlice = false;
+                }
+                // <- darken only non-active slices WHILE revealing
                 const isSweep =
                   round?.roundStatus === "betting" && sweepIdx === i;
                 const isCurrentSlice = sweepIdx === i;
+                const userBoxTotal = round?.userPerBoxTotal?.find(
+                  (b: user_perbox_total) => b.box === bx.title
+                );
                 return (
                   <div key={bx.key}>
                     <motion.button
@@ -1673,8 +1714,8 @@ export default function App() {
                             alt="Pointing Finger"
                             style={{
                               width: "100%",
-                              height: "100%", // Make sure the image scales to the div's size
-                              objectFit: "contain", // Keeps the aspect ratio intact
+                              height: "100%",
+                              objectFit: "contain",
                             }}
                           />
                         </div>
@@ -1684,7 +1725,6 @@ export default function App() {
                         aria-hidden
                         className="absolute inset-0 pointer-events-none rounded-full"
                         style={{
-                          // a richer “dark” look: slight vignette + black scrim
                           background:
                             "radial-gradient(120% 120% at 50% 35%, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.35) 55%, rgba(0,0,0,0.55) 100%), rgba(0,0,0,0.55)",
                           zIndex: 20,
@@ -1717,15 +1757,67 @@ export default function App() {
                           </span>
                         </div>
 
+                        {/* === total badge (dark-overlay aware) === */}
+                        {userBoxTotal && (
+                          <div
+                            className="absolute -top-5 z-50 w-full"
+                            style={{
+                              left: "50%",
+                              transform: "translateX(-50%)",
+                            }}
+                          >
+                            <div className="relative inline-block rounded-full">
+                              <div
+                                className="rounded-full px-1.5 py-0.5 text-[8px] font-semibold bg-white text-gray-800 shadow"
+                                style={{
+                                  border: "1px solid rgba(255,255,255,.25)",
+                                }}
+                                aria-label={`${userBoxTotal.totalAmount} `}
+                              >
+                                {`You: ${userBoxTotal.totalAmount}`}
+                              </div>
+
+                              {/* dark overlay for the badge */}
+                              <div
+                                aria-hidden
+                                className="pointer-events-none absolute inset-0 rounded-full transition-opacity duration-150"
+                                style={{
+                                  background:
+                                    "radial-gradient(120% 120% at 50% 40%, rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 55%, rgba(0,0,0,.65) 100%), rgba(0,0,0,.45)",
+                                  opacity: dimSlice ? 1 : 0,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* === HOT badge (dark-overlay aware) === */}
                         {hotKey === bx.key && (
                           <div
-                            className="absolute -left-1 -top-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-500 text-white shadow z-50"
-                            style={{
-                              border: "1px solid rgba(255,255,255,.25)",
-                            }}
+                            className="absolute -right-6 top-4 z-50"
                             aria-label={`HOT: ${bx.title} has the highest total bets`}
                           >
-                            HOT
+                            <div className="relative inline-flex items-center">
+                              <div className="bg-orange-600 text-white font-bold text-[8px] px-1.5 py-0.5 rounded-full shadow-lg border border-white/30 flex items-center justify-center">
+                                HOT
+                              </div>
+
+                              {/* Tail */}
+                              <div className="absolute -bottom-[4px] left-3/12 -translate-x-1/2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-orange-600 rotate-12"></div>
+
+                              {/* dark overlay for the HOT badge (covers pill + tail) */}
+                              <div
+                                aria-hidden
+                                className="pointer-events-none absolute inset-0 transition-opacity duration-150"
+                                style={{
+                                  // slight rectangle overlay; if you want perfect rounded match, wrap tail separately
+                                  background:
+                                    "radial-gradient(120% 120% at 50% 40%, rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 55%, rgba(0,0,0,.65) 100%), rgba(0,0,0,.45)",
+                                  borderRadius: 9999, // soften over the pill area
+                                  opacity: dimSlice ? 1 : 0,
+                                }}
+                              />
+                            </div>
                           </div>
                         )}
 
@@ -1774,7 +1866,7 @@ export default function App() {
                     : "Preparing…"}
                 </div>
 
-                <div className="text-[28px] font-black tabular-nums drop-shadow-[0_1px_0_rgba(0,0,0,.35)] -mt-3">
+                <div className="text-[22px] font-black tabular-nums drop-shadow-[0_1px_0_rgba(0,0,0,.35)] -mt-3">
                   {round?.roundStatus === "revealed"
                     ? "0s"
                     : `${Math.floor(uiLeftMs / 1000)}s`}
@@ -1936,7 +2028,7 @@ export default function App() {
                     Result
                   </div>
 
-                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                  <div className="flex items-center gap-2 overflow-y-hidden overflow-x-auto no-scrollbar">
                     {(winnersHistory?.length ? [...winnersHistory] : [])
                       .filter(
                         (it, idx) => idx !== 0 || !!(it as any).winningBox
@@ -1964,8 +2056,7 @@ export default function App() {
                                 background:
                                   "linear-gradient(180deg,#cde8ff,#b6dcff)",
                                 border: "1px solid #7fb4ff",
-                                boxShadow:
-                                  "inset 0 1px 0 rgba(255,255,255,.7), 0 2px 0 #1e3a8a, 0 6px 14px rgba(0,0,0,.25)",
+                      
                               }}
                               title={labelText}
                             >

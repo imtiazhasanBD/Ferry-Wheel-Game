@@ -10,7 +10,13 @@ const rules = [
   "If the player chooses meat and the result is meat, they will be rewarded;",
 ];
 
-const GameRules = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
+const GameRules = ({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) => {
   return (
     <AnimatePresence>
       {open && (
@@ -23,10 +29,12 @@ const GameRules = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
         >
           {/* Card */}
           <motion.div
+            // initial={{ opacity: 0, scale: 0.95, y: 14 }}
+            // animate={{ opacity: 1, scale: 1, y: 0 }}
+            // exit={{ opacity: 0, scale: 0.97, y: 6 }}
             initial={{ opacity: 0, scale: 0.95, y: 14 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-           // exit={{ opacity: 0, scale: 0.97, y: 6 }}
-            transition={{ type: "spring", stiffness: 220, damping: 22 }}
+           // transition={{ type: "spring", stiffness: 220, damping: 22 }}
             className="relative w-[92%] max-w-md rounded-3xl text-white pointer-events-auto"
             style={{
               background:
@@ -40,9 +48,9 @@ const GameRules = ({ open, onClose }: { open: boolean; onClose: () => void }) =>
             {/* Ribbon */}
             <div className="absolute -top-8 left-1/2 -translate-x-1/2">
               <motion.div
-                initial={{ y: -16, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.05 }}
+              // initial={{ y: -16, opacity: 0 }}
+              // animate={{ y: 0, opacity: 1 }}
+              // transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.05 }}
               >
                 <RibbonBlueTwisted>GAME RULES</RibbonBlueTwisted>
               </motion.div>
@@ -107,9 +115,11 @@ function RibbonBlueTwisted({ children }: { children: React.ReactNode }) {
       <div
         className="relative min-w-[200px] rounded-[16px] px-6 py-1.5 text-center text-[18px] font-extrabold tracking-wide text-white"
         style={{
-          background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 60%, #1b5d9c 100%)",
+          background:
+            "linear-gradient(180deg,#36a2ff 0%, #2379c9 60%, #1b5d9c 100%)",
           textShadow: "0 1px 0 rgba(0,0,0,.25)",
-          boxShadow: "0 6px 12px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.6)",
+          boxShadow:
+            "0 6px 12px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.6)",
           border: "2px solid rgba(255,255,255,.5)",
         }}
       >

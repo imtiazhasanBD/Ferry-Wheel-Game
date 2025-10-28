@@ -55,18 +55,20 @@ export default function SettingsDialog({
     <AnimatePresence>
       {open && (
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          // initial={{ opacity: 0 }}
+          // animate={{ opacity: 1 }}
+          // exit={{ opacity: 0 }}
           className="fixed inset-0 z-[999] grid place-items-center bg-black/60 backdrop-blur-sm"
           onClick={onClose}
         >
           {/* Dialog card */}
           <motion.div
-            initial={{ scale: 0.95, y: 12, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.98, y: 6, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+            // initial={{ scale: 0.95, y: 12, opacity: 0 }}
+            // animate={{ scale: 1, y: 0, opacity: 1 }}
+            // exit={{ scale: 0.98, y: 6, opacity: 0 }}
+            // transition={{ type: "spring", stiffness: 260, damping: 22 }}
+            initial={{ opacity: 0, scale: 0.95, y: 14 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
             className="relative w-[92%] max-w-md rounded-3xl text-white pointer-events-auto"
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -80,9 +82,14 @@ export default function SettingsDialog({
             {/* Ribbon */}
             <div className="absolute -top-8 left-1/2 -translate-x-1/2">
               <motion.div
-                initial={{ y: -16, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.05 }}
+                // initial={{ y: -16, opacity: 0 }}
+                // animate={{ y: 0, opacity: 1 }}
+                // transition={{
+                //   type: "spring",
+                //   stiffness: 300,
+                //   damping: 18,
+                //   delay: 0.05,
+                // }}
               >
                 <RibbonBlueTwisted>SETTINGS</RibbonBlueTwisted>
               </motion.div>
@@ -111,7 +118,8 @@ export default function SettingsDialog({
                   onToggleMute={toggleMasterMute}
                 />
                 <p className="mt-1 text-[11px] text-white/70">
-                  Controls Bet, Reveal, and Win. Background music is NOT affected.
+                  Controls Bet, Reveal, and Win. Background music is NOT
+                  affected.
                 </p>
               </div>
 
@@ -124,7 +132,9 @@ export default function SettingsDialog({
                   iconOn={<Music2 size={18} />}
                   onToggleMute={toggleBgMute}
                 />
-                <p className="mt-2 text-[11px] text-white/70">Controls only Background Music.</p>
+                <p className="mt-2 text-[11px] text-white/70">
+                  Controls only Background Music.
+                </p>
               </div>
             </div>
           </motion.div>
@@ -197,7 +207,9 @@ function SliderRow({
           max={1}
           step={0.01}
           value={value}
-          onChange={(e) => onChange(parseFloat((e.target as HTMLInputElement).value))}
+          onChange={(e) =>
+            onChange(parseFloat((e.target as HTMLInputElement).value))
+          }
           className="w-full h-2 rounded-full appearance-none outline-none touch-none"
           style={{
             background: `linear-gradient(90deg, #36a2ff ${pct}%, #0f355e ${pct}%)`,
@@ -259,9 +271,11 @@ function RibbonBlueTwisted({ children }: { children: React.ReactNode }) {
       <div
         className="relative min-w-[200px] rounded-[16px] px-6 py-1.5 text-center text-[18px] font-extrabold tracking-wide text-white"
         style={{
-          background: "linear-gradient(180deg,#36a2ff 0%, #2379c9 60%, #1b5d9c 100%)",
+          background:
+            "linear-gradient(180deg,#36a2ff 0%, #2379c9 60%, #1b5d9c 100%)",
           textShadow: "0 1px 0 rgba(0,0,0,.25)",
-          boxShadow: "0 6px 12px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.6)",
+          boxShadow:
+            "0 6px 12px rgba(0,0,0,.3), inset 0 2px 0 rgba(255,255,255,.6)",
           border: "2px solid rgba(255,255,255,.5)",
         }}
       >
