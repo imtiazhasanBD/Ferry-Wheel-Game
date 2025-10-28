@@ -167,9 +167,9 @@ export function useGame() {
   const [round, setRound] = useState<RoundModel>(INITIAL_ROUND);
   const [balance, setBalance] = useState<number>(0);
   const [sid, setSid] = useState<string | null>(null);
-  const [totalUsers, setTotalUsers] = useState(0);
+ // const [totalUsers, setTotalUsers] = useState(0);
   const [myBetTotal, setMyBetTotal] = useState(0);
-  const [companyWallet, setCompanyWallet] = useState(0);
+//  const [companyWallet, setCompanyWallet] = useState(0);
   const [time, setTime] = useState(0); 
   const [setting, setSetting] = useState<Settings | null>()
   const [ping, setPing] = useState(0)
@@ -319,9 +319,9 @@ useEffect(() => {
     };
 
 
-    const onTotalUsersCount = ({ count }: any) => setTotalUsers(count);
+   // const onTotalUsersCount = ({ count }: any) => setTotalUsers(count);
     const onUserBetTotal = ({ totalUserBet }: any) => setMyBetTotal(totalUserBet);
-  //  const onCompanyWallet = ({ wallet }: any) => setCompanyWallet(wallet);
+    //const onCompanyWallet = ({ wallet }: any) => setCompanyWallet(wallet);
 
     socket.on("roundStarted", onStart);
     socket.on("roundUpdated", onUpdate);
@@ -335,7 +335,7 @@ useEffect(() => {
     socket.on("bet_accepted", onAccepted);
     socket.on("balanceUpdate", onBalance);
     socket.on("user_bet_total", onUserBetTotal);
-    socket.on("joinedTotalUsers", onTotalUsersCount);
+ //   socket.on("joinedTotalUsers", onTotalUsersCount);
     //socket.on("get_company_wallet", onCompanyWallet);
 
     return () => {
@@ -351,7 +351,7 @@ useEffect(() => {
       socket.off("bet_accepted", onAccepted);
       socket.off("balanceUpdate", onBalance);
       socket.off("user_bet_total", onUserBetTotal);
-      socket.off("joinedTotalUsers", onTotalUsersCount);
+    //  socket.off("joinedTotalUsers", onTotalUsersCount);
      // socket.off("get_company_wallet", onCompanyWallet);
 
       if (localPulseInterval) clearInterval(localPulseInterval);
@@ -538,7 +538,7 @@ useEffect(() => {
     balance,     
     sid,
     myBetTotal,   
-    companyWallet,
+  //  companyWallet,
     ping 
   };
 }
