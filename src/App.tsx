@@ -1627,29 +1627,30 @@ export default function App() {
                     ? (round?.winnerBox as "Pizza" | "Salad")
                     : null;
 
-                const isRevealingPhase = roundPhase === "revealing" || roundPhase === "revealed";
-                const isAfterReveal = roundPhase === "completed";
+                //const isRevealingPhase =
+                //  roundPhase === "revealing" || roundPhase === "revealed";
+              //  const isAfterReveal = roundPhase === "completed";
 
+                // highlight logic for dark overlay
                 // highlight logic for dark overlay
                 let dimSlice = false;
 
-                if (isRevealingPhase) {
-                  // while revealing: only the active hopping slice stays bright
-                  dimSlice = !isActive;
-                } else if (isAfterReveal) {
+                const isRevealish =
+                  roundPhase === "revealing" || roundPhase === "revealed";
+
+                if (isRevealish) {
                   if (platformWinner) {
                     // platform won: brighten all slices that belong to that platform group
-                    dimSlice = bx.group !== platformWinner; // dark if group doesn't match
-                  } else if (forcedWinner) {
-                    // normal wheel win: only the winning slice stays bright
-                    dimSlice = bx.key !== forcedWinner;
+                    const groupName = bx.group?.toLowerCase?.();
+                    dimSlice = groupName !== platformWinner.toLowerCase();
                   } else {
-                    dimSlice = false;
+                    // otherwise, only keep active slice bright
+                    dimSlice = !isActive;
                   }
                 } else {
-                  // betting / preparing: no dark overlay
-                  dimSlice = false;
+                  dimSlice = false; // normal (betting/preparing)
                 }
+
                 // <- darken only non-active slices WHILE revealing
                 const isSweep =
                   round?.roundStatus === "betting" && sweepIdx === i;
