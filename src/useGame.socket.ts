@@ -278,6 +278,64 @@ useEffect(() => {
 }, [socket, setUserPersist]);
 
 
+
+const rehydrateAfterLogin = useCallback(async () => {
+  if (!socket) return;
+
+  // 1) Update auth on the existing socket and force a fresh handshake
+  try {
+    (socket as any).auth = { token: getAuthToken() };
+  } catch {}
+  if (socket.connected) socket.disconnect();
+  socket.connect();
+
+  // (optional but helpful) surface auth errors
+  await new Promise<void>((resolve) => {
+    const onConnect = () => { socket.off("connect", onConnect); resolve(); };
+    socket.once("connect", onConnect);
+  });
+
+  // 2) Join the game room (server may require auth to bind membership)
+  socket.emit("join", { room: "table:alpha" }, (ackState: any) => {
+    if (ackState?.roundStatus) setRound(ackState);
+  });
+
+  // 3) Get balance right now (don’t wait for server pushes)
+  socket.emit("get_balance", {}, (res: any) => {
+    if (res?.success && typeof res.balance === "number") {
+      setBalance(res.balance);
+      setUserPersist((u) => ({ ...u, balance: res.balance }));
+    }
+  });
+
+  // 4) Hydrate current round (socket first, REST fallback)
+  try {
+    const res: any = await emitAck(socket as any, "getCurrentRound", {});
+    if (res?.success && res?.round) {
+      setRound(res.round);
+      return;
+    }
+  } catch {}
+  try {
+    const token = getAuthToken();
+    const r = await fetch(`${API_BASE}/api/v1/rounds/current`, {
+      headers: {
+        Accept: "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (r.ok) {
+      const data = await r.json();
+      const roundPayload = data?.round ?? data;
+      if (roundPayload?.roundStatus) setRound(roundPayload);
+    }
+  } catch (e) {
+    console.warn("[rehydrateAfterLogin] REST fallback failed", e);
+  }
+}, [socket, setUserPersist, setRound, setBalance]);
+
+
+
   /** ---- round lifecycle & timers (using start/end/reveal) ---- */
   useEffect(() => {
     if (!socket) return;
@@ -533,7 +591,7 @@ useEffect(() => {
     getRoundWinners,
     getCurrentHistory,
 
-
+    rehydrateAfterLogin,
     setting,
     balance,     
     sid,

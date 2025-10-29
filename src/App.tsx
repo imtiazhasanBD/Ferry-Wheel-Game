@@ -1263,10 +1263,16 @@ export default function App() {
     return () => cancelAnimationFrame(raf);
   }, [bootLoading]);
 
-  function handleLoginSuccess() {
-    // your LoginPage should save token to localStorage
+  async function handleLoginSuccess() {
     setToken(localStorage.getItem("auth_token"));
     setLoggedIn(true);
+    await game.rehydrateAfterLogin?.();
+    try {
+      const res = await getDailyWins();
+      setTodayWins(res?.totalWin ?? 0);
+    } catch {
+      setTodayWins(null);
+    }
   }
 
   useEffect(() => {
@@ -1621,9 +1627,8 @@ export default function App() {
                     ? (round?.winnerBox as "Pizza" | "Salad")
                     : null;
 
-                const isRevealingPhase = roundPhase === "revealing";
-                const isAfterReveal =
-                  roundPhase === "revealed" || roundPhase === "completed";
+                const isRevealingPhase = roundPhase === "revealing" || roundPhase === "revealed";
+                const isAfterReveal = roundPhase === "completed";
 
                 // highlight logic for dark overlay
                 let dimSlice = false;
@@ -1794,7 +1799,7 @@ export default function App() {
                         {/* === HOT badge (dark-overlay aware) === */}
                         {hotKey === bx.key && (
                           <div
-                            className="absolute -right-6 top-4 z-50"
+                            className="absolute -right-6 top-0 z-50"
                             aria-label={`HOT: ${bx.title} has the highest total bets`}
                           >
                             <div className="relative inline-flex items-center">
@@ -1838,6 +1843,7 @@ export default function App() {
                 top: hubTop,
                 width: hubSize,
                 height: hubSize,
+                // OUTER RING (unchanged)
                 background: "linear-gradient(180deg,#2f63c7,#1f4290)",
                 boxShadow:
                   "0 20px 50px rgba(0,0,0,.55), inset 0 0 0 10px rgba(255,255,255,.15)",
@@ -1852,24 +1858,41 @@ export default function App() {
               }}
               transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
             >
-              <img src="/cat_anomation.gif" className="w-64 absolute -top-8" />
-              <div className="text-center relative">
-                <div className="text-[12px] font-semibold tracking-wide mt-9">
-                  {bettingOpen && !showLeaderboard
-                    ? "Place bets"
-                    : round?.roundStatus === "revealing"
-                    ? "Revealing…"
-                    : round?.roundStatus === "revealed"
-                    ? "result"
-                    : round?.roundStatus === "completed"
-                    ? "Next round in"
-                    : "Preparing…"}
-                </div>
+              {/* INNER DISC (white/blue split) */}
+              <div
+                className="rounded-full relative flex items-center justify-center text-center border-1 border-blue-600"
+                style={{
+                  width: "86%", // adjust for desired rim thickness
+                  height: "86%",
+                  background:
+                    "linear-gradient(180deg, #ffffff 0%, #ffffff 50%, #62c1ef 50%, #62c1ef 100%)",
+                  boxShadow: "inset 0 0 10px rgba(0,0,0,.25)",
+                }}
+              >
+                <img
+                  src="/cat_anomation.gif"
+                  alt="Cat"
+                  className="w-64 absolute -top-8"
+                />
 
-                <div className="text-[22px] font-black tabular-nums drop-shadow-[0_1px_0_rgba(0,0,0,.35)] -mt-3">
-                  {round?.roundStatus === "revealed"
-                    ? "0s"
-                    : `${Math.floor(uiLeftMs / 1000)}s`}
+                <div className="relative">
+                  <div className="text-[12px] font-semibold tracking-wide mt-9">
+                    {bettingOpen && !showLeaderboard
+                      ? "Place bets"
+                      : round?.roundStatus === "revealing"
+                      ? "Revealing…"
+                      : round?.roundStatus === "revealed"
+                      ? "Result"
+                      : round?.roundStatus === "completed"
+                      ? "Next round"
+                      : "Preparing…"}
+                  </div>
+
+                  <div className="text-[22px] font-black tabular-nums drop-shadow-[0_1px_0_rgba(0,0,0,.35)] -mt-3">
+                    {round?.roundStatus === "revealed"
+                      ? "0s"
+                      : `${Math.floor(uiLeftMs / 1000)}s`}
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -2056,7 +2079,6 @@ export default function App() {
                                 background:
                                   "linear-gradient(180deg,#cde8ff,#b6dcff)",
                                 border: "1px solid #7fb4ff",
-                      
                               }}
                               title={labelText}
                             >
@@ -2239,9 +2261,13 @@ export default function App() {
                 <div className="text-[11px] opacity-90 leading-none">Coins</div>
                 <div
                   ref={balanceRef}
-                  className="text-[14px] font-bold tabular-nums leading-tight"
+                  className="text-[14px] font-bold tabular-nums leading-tight min-w-[72px]"
                 >
-                  💎 {balance ?? 0}
+                  {!balance ? (
+                    <div className="h-4 w-[72px] rounded animate-pulse bg-white/20" />
+                  ) : (
+                    <>🪙 {balance}</>
+                  )}
                 </div>
               </div>
               {/* Avatar */}
@@ -2263,8 +2289,12 @@ export default function App() {
                 <div className="text-[11px] opacity-90 leading-none">
                   Today's Win
                 </div>
-                <div className="text-[14px] font-bold tabular-nums leading-tight">
-                  💎 {todayWins ?? 0}
+                <div className="text-[14px] font-bold tabular-nums leading-tight min-w-[72px]">
+                  {todayWins === null ? (
+                    <div className="h-4 w-[72px] rounded animate-pulse bg-white/20" />
+                  ) : (
+                    <>🪙 {todayWins}</>
+                  )}
                 </div>
               </div>
             </div>

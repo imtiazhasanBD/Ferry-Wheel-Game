@@ -30,11 +30,11 @@ type RoundItem = {
 
 /* ========= View model for our rows ========= */
 type RoundVM = {
-  dateStr: string; 
-  roundNumber: number; 
+  dateStr: string;
+  roundNumber: number;
   bets: { box: string; amount: number }[];
   resultBox: string | null;
-  netWin: number;
+  totalWin: number;
 };
 
 /* ========= Formatters ========= */
@@ -69,7 +69,7 @@ export default function Record({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (false) return;
 
     const fetchData = async () => {
       setLoading(true);
@@ -77,6 +77,7 @@ export default function Record({
       try {
         const data = await getRoundHistory();
         setRows(data);
+        console.log("dataaaaaaaaaaaaaaa",data)
       } catch (err: any) {
         console.error(err);
         setError("Failed to load bet history.");
@@ -86,7 +87,7 @@ export default function Record({
     };
 
     fetchData();
-  }, [open]);
+  }, [true]);
 
   return (
     <AnimatePresence>
@@ -252,22 +253,9 @@ export default function Record({
 
                         {/* Win  */}
                         <div className="flex items-start m-auto text-[12px]">
-                          {r.netWin !== 0 ? (
-                            <span
-                              className={`font-semibold ${
-                                r.netWin > 0
-                                  ? "text-emerald-300"
-                                  : "text-rose-300"
-                              }`}
-                            >
-                              🪙{" "}
-                              {r.netWin > 0
-                                ? fmtShort(r.netWin)
-                                : `-${fmtShort(Math.abs(r.netWin))}`}
-                            </span>
-                          ) : (
-                            <span className="text-white/70">—</span>
-                          )}
+                          <span className="font-semibold text-emerald-300">
+                            🪙 {fmtShort(r.totalWin)}
+                          </span>
                         </div>
                       </div>
 
@@ -310,7 +298,7 @@ async function getRoundHistory(): Promise<RoundVM[]> {
     roundNumber: rd.roundNumber,
     bets: rd.perBox.map((p) => ({ box: p.box, amount: p.totalAmount })),
     resultBox: rd.winningBox,
-    netWin: (rd.totalWin || 0) - (rd.totalLose || 0),
+    totalWin: rd.totalWin ?? 0,
   }));
 }
 
