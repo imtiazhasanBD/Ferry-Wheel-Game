@@ -32,10 +32,7 @@ import { WheelStand } from "./components/ImageWheelStand";
 
 /** ==================== CONFIG ==================== **/
 const CHIPS = [1000, 2000, 5000, 10000, 50000] as const;
-//const MAX_COINS_PER_SLICE = 60;
 const INTERMISSION_SECS = 8; // how long the leaderboard intermission lasts
-// === Cursor/popup timings ===
-//const HOP_MS = 70;               // same hop speed for wheel + pizza/salad
 const WINNER_POPUP_DELAY_MS = 1500; // hold on winner before showing popup
 
 // Sounds
@@ -163,7 +160,6 @@ export default function App() {
 
   // --- Cursor/highlight (replaces spinning) ---
   const [hlIndex, setHlIndex] = useState<number | null>(null);
-  //const [hlColor, setHlColor] = useState<string>("#22c55e");
   const cursorIntervalRef = useRef<number | null>(null);
   const decelTimeoutRef = useRef<number | null>(null);
   const cursorRunningRef = useRef(false);
@@ -173,18 +169,7 @@ export default function App() {
   const SND_HOP = SND_REVEAL; // or SND_BET if you like that sound better
   round.winnerBox === "Pizza" || round.winnerBox === "Salad";
   const PLATFORM_KEYS = ["Pizza", "Salad"] as const;
-  /*   const HL_COLORS = [
-    "#22c55e",
-    "#3b82f6",
-    "#ef4444",
-    "#a855f7",
-    "#06b6d4",
-    "#f59e0b",
-    "#10b981",
-  ]; */
-
-  const [platIdx, setPlatIdx] = useState<number | null>(null); // 0=Pizza, 1=Salad, null=off
-  //const [platColor, setPlatColor] = useState<string>("#22c55e");
+  const [platIdx, setPlatIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (round?.roundStatus !== "revealing") {
@@ -228,18 +213,6 @@ export default function App() {
       a.play().catch(() => {});
     } catch {}
   }
-
-  /*   const colorPalette = [
-    "#22c55e", // green
-    "#eab308", // yellow
-    "#f97316", // orange
-    "#ef4444", // red
-    "#a855f7", // purple
-    "#06b6d4", // cyan
-    "#3b82f6", // blue
-  ]; */
-  /*  const randColor = () =>
-    colorPalette[(Math.random() * colorPalette.length) | 0]; */
 
   // near other refs
   const cursorTimeoutRef = useRef<number | null>(null);
@@ -423,8 +396,6 @@ export default function App() {
   const [payoutFlies, setPayoutFlies] = useState<PayoutFly[]>([]);
   const [bankFlies, setBankFlies] = useState<BankFly[]>([]);
 
-  // Sidebar / Drawer
-  // const [drawerOpen, setDrawerOpen] = useState(false);
   // round-over is when the server has finished the reveal
   const isRoundOver =
     round?.roundStatus === "revealed" || round?.roundStatus === "completed";
@@ -695,7 +666,6 @@ export default function App() {
 
   /** ===== history & leaderboard (per 10 rounds) ===== */
   const [winnersHistory, setWinnersHistory] = useState<ApiHistoryItem[]>([]);
-  const [winsByPlayer, setWinsByPlayer] = useState<Record<string, number>>({});
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showTodayLeaderboard, setShowTodayLeaderboard] = useState(false);
   const [showGameRules, setShowGameRules] = useState(false);
@@ -785,9 +755,6 @@ export default function App() {
 
   /** ===== spin & settle ===== */
   const controls = useAnimation();
-  //const lastSpinRoundRef = useRef<string | null>(null);
-
-  //const [wheelDeg, setWheelDeg] = useState(0);
 
   // when betting closes, hide transient flies
   useEffect(() => {
@@ -884,91 +851,21 @@ export default function App() {
   useEffect(() => () => stopCursor(), []);
 
   function doRevealFlights(winner: FoodsKey) {
-    const cont = getContainerRect();
-    const bal = balanceRef.current?.getBoundingClientRect();
-    const bank = bankRef.current?.getBoundingClientRect();
-
-    /** ===== my winners -> balance ===== */
-    if (user && bal && cont) {
-      const myWins = stacked.filter(
-        (c) => c.userId === user.id && c.fruit === winner
-      );
-      if (myWins.length) {
-        if (winAudioRef.current && audioReady) {
-          winAudioRef.current.pause();
-          winAudioRef.current.currentTime = 0;
-          winAudioRef.current.play().catch(() => {});
-        }
-        const flies = myWins.map((c, i) => {
-          const idx = (slices as FoodsKey[]).indexOf(c.fruit);
-          const p = targetForBet(idx, c.id);
-          return {
-            id: c.id,
-            fromX: p.x - 20,
-            fromY: p.y - 20,
-            delay: i * 0.05,
-          };
-        });
-        setPayoutFlies(flies);
-        setTimeout(() => {
-          setStacked((prev) =>
-            prev.filter((c) => !(c.userId === user.id && c.fruit === winner))
-          );
-          setPayoutFlies([]);
-        }, 1200 + myWins.length * 50);
-      }
-    }
-
-    /** ===== losers -> bank ===== */
-    if (bank && cont) {
-      const losers = stacked.filter((c) => c.fruit !== winner);
-      if (losers.length) {
-        const bflies = losers.map((c, i) => {
-          const idx = (slices as FoodsKey[]).indexOf(c.fruit);
-          const p = targetForBet(idx, c.id);
-          return {
-            id: c.id,
-            fromX: p.x - 20,
-            fromY: p.y - 20,
-            delay: i * 0.03,
-          };
-        });
-        setBankFlies(bflies);
-        setTimeout(() => {
-          setStacked((prev) => prev.filter((c) => c.fruit === winner));
-          setBankFlies([]);
-        }, 1100 + losers.length * 30);
-      }
-    }
+    // (no coin spawn here — scoreboard-driven effect handles animations)
 
     /** ===== history + ranking + block counter ===== */
-    const winnersThisRound = new Set(
-      stacked.filter((c) => c.fruit === winner).map((c) => c.userId)
-    );
-    if (winnersThisRound.size) {
-      setWinsByPlayer((prev) => {
-        const next = { ...prev } as Record<string, number>;
-        for (const uid of winnersThisRound) next[uid] = (next[uid] ?? 0) + 1;
-        return next;
-      });
-    }
-    // 1) Aggregate bet & win per user for *this round*
     const perUser: Record<string, { bet: number; win: number }> = {};
     for (const c of stacked) {
-      // total bet: all coins the user placed this round (any fruit)
       perUser[c.userId] ??= { bet: 0, win: 0 };
       perUser[c.userId].bet += c.value;
-
-      // total win: only coins on the winning fruit times multiplier
       if (c.fruit === winner) {
         perUser[c.userId].win += c.value * MULTIPLIER[winner];
       }
     }
 
     setTimeout(() => setShowRoundWinners(true), WINNER_POPUP_DELAY_MS);
-    // increment block count; show leaderboard exactly every 10 rounds
+
     setBlockCount((prev) => {
-      console.log("prevvvvvvvvvvvvvvvvvvvvvvv", prev);
       const next = prev + 1;
       if (displayBlockRound >= 10) {
         setShowLeaderboard(true);
@@ -1174,15 +1071,6 @@ export default function App() {
     return bestVal > 0 ? best : null;
   }, [liveBoxes, totalsForHot]);
 
-  const ranking = useMemo(() => {
-    const arr = Object.entries(winsByPlayer).map(([userId, wins]) => ({
-      userId,
-      wins,
-    }));
-    arr.sort((a, b) => (b.wins ?? 0) - (a.wins ?? 0));
-    return arr;
-  }, [winsByPlayer]);
-
   // settings panel
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -1207,7 +1095,6 @@ export default function App() {
 
       // reset block tallies for the next 10-round block
       setBlockCount(0);
-      setWinsByPlayer({});
       //  setWinnersHistory([]);
 
       // tell the game to start the next round if it exposes a method
@@ -1216,18 +1103,6 @@ export default function App() {
       }
     }
   }, [showLeaderboard, intermissionSec, startNextRound]);
-
-  /*   function handleWin(winner: FoodsKey) {
-    const winAmount = userBets[winner] * MULTIPLIER[winner];
-    console.log(`You won ${winAmount} coins on ${LABEL[winner]}!`);
-    if (winAmount > 0) {
-      // Prefer server-side credit if you have it:
-      creditWin?.(winAmount).catch(() => {
-        // fallback optimistic:
-        updateBalance?.(winAmount);
-      });
-    }
-  } */
 
   // ===== Initial game loader (fixed-time) =====
   const LOADER_DURATION_MS = 3000; // <- pick your fixed time (e.g., 2000-4000ms)
@@ -1370,7 +1245,7 @@ export default function App() {
     sliceCount,
   ]);
 
-  console.log("winHistoryyyyyyyyyyyyyyyyyyyyyyyyyy", ranking, token);
+  console.log("winHistoryyyyyyyyyyyyyyyyyyyyyyyyyy", token);
 
   //console.log("roundddddddd",round)
 
@@ -1415,6 +1290,123 @@ export default function App() {
 
   console.log("Current sweep interval: ", SWEEP_STEP_MS); // Check value of SWEEP_STEP_MS
   console.log("Current sweep index: ", sweepIdx); // Verify sweepIdx is updating every 1000ms
+
+  // ===== Single-run guards for scoreboard-driven flight =====
+  const winnersBurstDoneRef = useRef(false);
+  const lastProcessedRoundRef = useRef<string | null>(null);
+
+  // Stable “current round key”
+  const currentRoundKey = String(
+    (round as any)?._id ??
+      (round as any)?.roundId ??
+      (round as any)?.roundNumber ??
+      ""
+  );
+
+  // Reset guards whenever a new round starts (or goes back to betting)
+  useEffect(() => {
+    if (!currentRoundKey) return;
+    if (
+      round?.roundStatus === "betting" ||
+      lastProcessedRoundRef.current !== currentRoundKey
+    ) {
+      lastProcessedRoundRef.current = null;
+      winnersBurstDoneRef.current = false;
+    }
+  }, [currentRoundKey, round?.roundStatus]);
+
+  // ===== Burst spawners (origin → balance/bank) =====
+  function spawnBurstTowardsBalance(
+    n: number,
+    origin?: { x: number; y: number }
+  ) {
+    const list: PayoutFly[] = [];
+    const base = origin ?? getWheelCenter();
+    for (let i = 0; i < n; i++) {
+      const jitterX = (Math.random() - 0.5) * 80;
+      const jitterY = (Math.random() - 0.5) * 80;
+      list.push({
+        id: uid(),
+        fromX: base.x + jitterX - 20,
+        fromY: base.y + jitterY - 20,
+        delay: i * 0.05,
+      });
+    }
+    setPayoutFlies(list);
+    setTimeout(() => setPayoutFlies([]), 1200 + n * 50);
+  }
+
+  function spawnBurstTowardsBank(n: number, origin?: { x: number; y: number }) {
+    const list: BankFly[] = [];
+    const base = origin ?? getWheelCenter();
+    for (let i = 0; i < n; i++) {
+      const jitterX = (Math.random() - 0.5) * 80;
+      const jitterY = (Math.random() - 0.5) * 80;
+      list.push({
+        id: uid(),
+        fromX: base.x + jitterX - 20,
+        fromY: base.y + jitterY - 20,
+        delay: i * 0.04,
+      });
+    }
+    setBankFlies(list);
+    setTimeout(() => setBankFlies([]), 1100 + n * 40);
+  }
+
+  // Winner-based origin (nicer than wheel center)
+// winner-based origin (unchanged)
+function winnerOriginOrCenter() {
+  const raw = (round as any)?.winnerBox ?? (round as any)?.winningBox;
+  const key = norm(raw);
+  const idx = liveBoxes.findIndex((b) => norm(b.key) === key);
+  if (idx >= 0) {
+    const p = targetForBet(idx, uid());
+    return { x: p.x, y: p.y };
+  }
+  return getWheelCenter();
+}
+
+// Drive coin flights from roundWinners exactly once per round
+useEffect(() => {
+  const phase = round?.roundStatus;
+  // Allow late data, but only after result is fixed
+  const resultFixed = phase === "revealed" || phase === "completed";
+  const meId = String((user as any)?.id ?? (user as any)?._id ?? "");
+
+  if (!currentRoundKey || !resultFixed || !roundWinners || !meId) return;
+  if (lastProcessedRoundRef.current === currentRoundKey) return;
+  if (winnersBurstDoneRef.current) return;
+
+  // Find my entry robustly
+  const meEntry =
+    roundWinners.topWinners?.find(
+      (x: any) => String(x.userId ?? x.user?._id ?? x._id ?? "") === meId
+    ) ?? null;
+
+  // If my row isn't here yet, don't mark processed — let future updates retrigger
+  if (!meEntry) return;
+
+  const won  = Math.max(0, Number(meEntry.amountWon ?? 0)); // payout returned
+  const bet  = Math.max(0, Number(meEntry.totalBet  ?? 0)); // stake placed
+  const loss = Math.max(0, bet - won);                      // stake not returned
+
+  // ✅ Correct scaling: only compute when strictly positive
+  const winCoins  = won  > 0 ? Math.min(10, Math.max(2, Math.round(won  / 5000))) : 0;
+  const lossCoins = loss > 0 ? Math.min(10, Math.max(2, Math.round(loss / 5000))) : 0;
+
+  // If nothing to animate, don't consume the round yet (wait for better data)
+  if (winCoins === 0 && lossCoins === 0) return;
+
+  const origin = winnerOriginOrCenter();
+
+  if (winCoins  > 0) spawnBurstTowardsBalance(winCoins, origin); // coin → balance
+  if (lossCoins > 0) spawnBurstTowardsBank   (lossCoins, origin); // coin → bank
+
+  // Mark processed ONLY after we actually spawned something
+  lastProcessedRoundRef.current = currentRoundKey;
+  winnersBurstDoneRef.current   = true;
+}, [currentRoundKey, round?.roundStatus, roundWinners, user?.id, user?._id]);
+
 
   return (
     <div
@@ -1629,7 +1621,7 @@ export default function App() {
 
                 //const isRevealingPhase =
                 //  roundPhase === "revealing" || roundPhase === "revealed";
-              //  const isAfterReveal = roundPhase === "completed";
+                //  const isAfterReveal = roundPhase === "completed";
 
                 // highlight logic for dark overlay
                 // highlight logic for dark overlay
@@ -2354,6 +2346,7 @@ export default function App() {
           </div>
 
           <div className="pointer-events-none absolute inset-0">
+            {/* Payout flights → balance */}
             <AnimatePresence>
               {payoutFlies.map((f) => (
                 <motion.div
@@ -2388,7 +2381,10 @@ export default function App() {
                   <Coin />
                 </motion.div>
               ))}
+            </AnimatePresence>
 
+            {/* Bank flights → bank button */}
+            <AnimatePresence>
               {bankFlies.map((f) => (
                 <motion.div
                   key={`b-${f.id}`}
@@ -2453,7 +2449,6 @@ export default function App() {
             prefs={prefs}
             setPrefs={setPrefs}
           />
-
           <RoundWinnersModal
             open={showRoundWinners}
             onClose={() => setShowRoundWinners(false)}

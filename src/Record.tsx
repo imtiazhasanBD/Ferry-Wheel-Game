@@ -87,7 +87,7 @@ export default function Record({
     };
 
     fetchData();
-  }, [true]);
+  }, [open]);
 
   return (
     <AnimatePresence>

@@ -673,13 +673,30 @@ export type RoundWinnerEntry = {
   createdAt: string;
 };
 
+type BetResult = {
+  userId: string;
+  amountWon: number;
+  totalBet: number;
+  betCount: number;
+  user: {
+    _id: string;
+    username: string;
+    email: string;
+    role: "user" | "admin" | string; // can expand if other roles exist
+    balance: number;
+    createdAt: string; // ISO date string
+  };
+};
+
+
 export type TopWinnersResponse = {
   status: boolean;
   message: string;
   _id: string;
+  userId: string;
   roundNumber: number;
   count: number;
-  topWinners: RoundWinnerEntry[];
+  topWinners: BetResult[];
   winningBox: string;
 };
 
@@ -712,18 +729,18 @@ export default function RoundWinnersModal({
   data: TopWinnersResponse | null;
   secondsLeft?: number;
 }) {
-  const myId =
-    typeof window !== "undefined" ? localStorage.getItem("user_id") ?? "" : "";
 
-  const topWinners =
-    data?.topWinners?.slice().sort((a, b) => b.amountWon - a.amountWon) ?? [];
-  const top3 = topWinners.slice(0, 3);
 
-  const meEntry = myId ? topWinners.find((x) => x.userId === myId) ?? null : null;
+
+  const top3 = data?.topWinners;
+
+  const meEntry =  data?.topWinners.find((x) => x.userId === data?.userId) ?? null;
+  
   const myBet = meEntry?.totalBet ?? 0;
   const myWin = meEntry?.amountWon ?? 0;
-
+  
   const emoji = getEmojiForBox(data?.winningBox);
+  console.log("myyyyyyyyyyyyyydataaaaaaaaaaaaaaaaaaaaa",top3);
 
   return (
     <AnimatePresence>
@@ -885,13 +902,13 @@ export default function RoundWinnersModal({
                 </div>
 
                 {/* Top winners (compact) */}
-                {top3.length === 0 ? (
+                {top3?.length === 0 ? (
                   <div className="text-center text-white/85 text-sm opacity-90">
                     No winners this round
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
-                    {top3.map((p, idx) => {
+                    {top3?.map((p, idx) => {
                       const place = idx + 1;
                       const crown = place === 1 ? "👑" : place === 2 ? "🥈" : "🥉";
                       return <WinnerBadge key={p.userId} p={p} crown={crown} />;
@@ -908,7 +925,7 @@ export default function RoundWinnersModal({
 }
 
 /* ---------- Sub-components ---------- */
-function WinnerBadge({ p, crown }: { p: RoundWinnerEntry; crown: string }) {
+function WinnerBadge({ p, crown }: { p: BetResult; crown: string }) {
   return (
     <div className="flex flex-col items-center gap-1 min-w-[88px]">
       <div className="text-xl leading-none">{crown}</div>
@@ -922,7 +939,7 @@ function WinnerBadge({ p, crown }: { p: RoundWinnerEntry; crown: string }) {
         }}
       >
         <span className="text-[#0f355e]/60 text-[10px] leading-none">
-          {p.username?.slice(0, 1) || "👤"}
+          {p.user.username?.slice(0, 1) || "👤"}
         </span>
       </div>
       <div
@@ -937,7 +954,7 @@ function WinnerBadge({ p, crown }: { p: RoundWinnerEntry; crown: string }) {
             "inset 0 1px 0 rgba(255,255,255,.8), 0 2px 6px rgba(0,0,0,.15)",
         }}
       >
-        {p.username ?? "—"}
+        {p.user.username ?? "—"}
       </div>
       <div
         className="rounded-full px-2 py-[1px] text-[10px] tabular-nums"
