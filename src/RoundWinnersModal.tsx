@@ -653,9 +653,6 @@
 //   );
 // }
 
-
-
-
 import { AnimatePresence, motion } from "framer-motion";
 import { EMOJI } from "./App";
 
@@ -678,16 +675,9 @@ type BetResult = {
   amountWon: number;
   totalBet: number;
   betCount: number;
-  user: {
-    _id: string;
-    username: string;
-    email: string;
-    role: "user" | "admin" | string; // can expand if other roles exist
-    balance: number;
-    createdAt: string; // ISO date string
-  };
+  username: string;
+  balance: number;
 };
-
 
 export type TopWinnersResponse = {
   status: boolean;
@@ -696,6 +686,7 @@ export type TopWinnersResponse = {
   userId: string;
   roundNumber: number;
   count: number;
+  totalBet: number;
   topWinners: BetResult[];
   winningBox: string;
 };
@@ -729,18 +720,16 @@ export default function RoundWinnersModal({
   data: TopWinnersResponse | null;
   secondsLeft?: number;
 }) {
-
-
-
   const top3 = data?.topWinners;
 
-  const meEntry =  data?.topWinners.find((x) => x.userId === data?.userId) ?? null;
-  
-  const myBet = meEntry?.totalBet ?? 0;
+  const meEntry =
+    data?.topWinners.find((x) => x.userId === data?.userId) ?? null;
+
+  const myBet = data?.totalBet ?? 0;
   const myWin = meEntry?.amountWon ?? 0;
-  
+
   const emoji = getEmojiForBox(data?.winningBox);
-  console.log("myyyyyyyyyyyyyydataaaaaaaaaaaaaaaaaaaaa",top3);
+  console.log("myyyyyyyyyyyyyydataaaaaaaaaaaaaaaaaaaaa", top3);
 
   return (
     <AnimatePresence>
@@ -761,7 +750,6 @@ export default function RoundWinnersModal({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
-
             // Swipe-to-close
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
@@ -769,14 +757,14 @@ export default function RoundWinnersModal({
             onDragEnd={(_, info) => {
               if (info.offset.y > 80 || info.velocity.y > 600) onClose();
             }}
-
             // Sheet container
             className="fixed inset-x-0 bottom-23 z-[999] w-full max-w-sm mx-auto rounded-t-[22px] text-white pointer-events-auto"
             style={{
               background:
                 "linear-gradient(180deg,#2379c9 0%, #1f6bb4 40%, #1b5d9c 75%, #154b7e 100%)",
               border: "4px solid rgba(255,255,255,.15)",
-              boxShadow: "0 -8px 24px rgba(0,0,0,.35), 0 16px 40px rgba(0,0,0,.45)",
+              boxShadow:
+                "0 -8px 24px rgba(0,0,0,.35), 0 16px 40px rgba(0,0,0,.45)",
               paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)",
             }}
             role="dialog"
@@ -816,7 +804,12 @@ export default function RoundWinnersModal({
               <motion.div
                 initial={{ y: -16, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 18, delay: 0.05 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 18,
+                  delay: 0.05,
+                }}
               >
                 <RibbonBlueTwisted>THIS ROUND</RibbonBlueTwisted>
               </motion.div>
@@ -850,8 +843,8 @@ export default function RoundWinnersModal({
                   <span className="text-2xl">{emoji}</span>
                   <span className="opacity-95 text-xl">
                     <span>
-                      {["Meat", "Sausage", "Skewer", "Ham", "Pizza"].some((item) =>
-                        data?.winningBox?.includes(item)
+                      {["Meat", "Sausage", "Skewer", "Ham", "Pizza"].some(
+                        (item) => data?.winningBox?.includes(item)
                       )
                         ? "🍕"
                         : "🥗"}
@@ -910,7 +903,8 @@ export default function RoundWinnersModal({
                   <div className="grid grid-cols-3 gap-2">
                     {top3?.map((p, idx) => {
                       const place = idx + 1;
-                      const crown = place === 1 ? "👑" : place === 2 ? "🥈" : "🥉";
+                      const crown =
+                        place === 1 ? "👑" : place === 2 ? "🥈" : "🥉";
                       return <WinnerBadge key={p.userId} p={p} crown={crown} />;
                     })}
                   </div>
@@ -939,7 +933,7 @@ function WinnerBadge({ p, crown }: { p: BetResult; crown: string }) {
         }}
       >
         <span className="text-[#0f355e]/60 text-[10px] leading-none">
-          {p.user.username?.slice(0, 1) || "👤"}
+          {p?.username?.slice(0, 1) || "👤"}
         </span>
       </div>
       <div
@@ -954,7 +948,7 @@ function WinnerBadge({ p, crown }: { p: BetResult; crown: string }) {
             "inset 0 1px 0 rgba(255,255,255,.8), 0 2px 6px rgba(0,0,0,.15)",
         }}
       >
-        {p.user.username ?? "—"}
+        {p?.username ?? "—"}
       </div>
       <div
         className="rounded-full px-2 py-[1px] text-[10px] tabular-nums"

@@ -264,7 +264,7 @@ export default function App() {
     opts?: {
       extraLaps?: number;
       startDelay?: number;
-      addPerStep?: number;
+      addPerStep?: number; // kept for backward compat, not used by the eased curve
       maxDelay?: number;
     }
   ) {
@@ -277,13 +277,18 @@ export default function App() {
     clearCursorTimers();
 
     let idx = hlIndex ?? 0;
-    const extraLaps = opts?.extraLaps ?? 0; // 0 for fast finish
-    let stepsLeft =
+
+    const extraLaps = opts?.extraLaps ?? 0;
+    // 🔸 compute TOTAL steps up front (current→target + extra laps)
+    const totalSteps =
       ((targetIndex - idx + sliceCount) % sliceCount) + extraLaps * sliceCount;
 
-    let delay = opts?.startDelay ?? 45; // start snappy
-    const addPer = opts?.addPerStep ?? 18; // decel faster
-    const maxDelay = opts?.maxDelay ?? 140; // cap so we finish <~1s
+    let stepsLeft = totalSteps;
+
+    // 🔸 easing bounds
+    const startDelay = opts?.startDelay ?? 70; // first eased delay
+    const maxDelay = opts?.maxDelay ?? 280; // slowest cadence at the end
+    let delay = startDelay;
 
     const step = () => {
       if (stepsLeft <= 0) {
@@ -301,13 +306,19 @@ export default function App() {
         return;
       }
 
+      // advance one slice
       idx = (idx + 1) % sliceCount;
       setHlIndex(idx);
-      // setHlColor(randColor());
       playHop();
       stepsLeft--;
 
-      delay = Math.min(maxDelay, delay + addPer);
+      // 🔸 EASED deceleration (replace your old: delay = Math.min(maxDelay, delay + addPerStep))
+      // progress 0..1 of the decel journey
+      const progressed = (totalSteps - stepsLeft) / Math.max(1, totalSteps);
+      // easeOutCubic curve
+      const eased = 1 - Math.pow(1 - progressed, 3);
+      delay = Math.round(startDelay + (maxDelay - startDelay) * eased);
+
       decelTimeoutRef.current = window.setTimeout(
         step,
         delay
@@ -821,19 +832,33 @@ export default function App() {
       const target = liveBoxes.findIndex((b) => norm(b.key) === winnerKey);
 
       if (target >= 0) {
-        // fast settle: 0 extra laps, ~45ms start, +18ms/step, cap 140ms
-        // was: settleOnWinner(target, { extraLaps: 0, startDelay: 45, addPerStep: 18, maxDelay: 140 });
-        settleOnWinner(target, {
-          extraLaps: 0, // keep 0 (1 lap may feel too long)
-          startDelay: 60, // start a little slower
-          addPerStep: 24, // decelerate more per hop
-          maxDelay: 200, // allow a slower peak delay
-        });
+        // --- NEW: wait the remainder of the current beat before starting decel
+        const now = performance.now();
+        const elapsedSinceLastHop = now - (lastHopAtRef.current || now);
+        const currentDelay = Math.max(25, hopDelayRef.current || 60);
+        const remainder = Math.max(0, currentDelay - elapsedSinceLastHop);
+
+        const start = () => {
+          // Start decel from the current cadence, then ramp up smoothly
+          settleOnWinner(target, {
+            extraLaps: 2,
+            startDelay: Math.max(70, currentDelay + 60),
+            addPerStep: 12,
+            maxDelay: 340,
+          });
+        };
+
+        if (remainder > 0) {
+          // align to the same beat before decel
+          window.setTimeout(start, remainder);
+        } else {
+          start();
+        }
       } else {
-        // winner is Pizza/Salad or unknown: no ring should keep moving
         stopAndClearHighlight();
         setTimeout(() => setShowRoundWinners(true), WINNER_POPUP_DELAY_MS);
       }
+
       return;
     }
 
@@ -939,8 +964,11 @@ export default function App() {
   );
 
   // helper (top-level with other utils)
-  const clamp = (n: number, a: number, b: number) =>
-    Math.min(b, Math.max(a, n));
+  // const clamp = (n: number, a: number, b: number) =>
+  //   Math.min(b, Math.max(a, n));
+
+  const hopDelayRef = useRef(50); // ms between hops at this moment
+  const lastHopAtRef = useRef<number>(0); // performance.now() of the last hop
 
   // Drive the hop while status === "revealing"
   function startRevealingCursor() {
@@ -948,31 +976,32 @@ export default function App() {
     stopCursor();
     cursorRunningRef.current = true;
 
-    // reveal duration in ms (fallback 5000)
     const revealMs =
       (typeof setting?.revealDuration === "number"
         ? setting.revealDuration
         : 5) * 1000;
 
-    // phaseEndAt already points to revealTime while revealing
     const endAt = phaseEndAt || Date.now() + revealMs;
 
     const step = () => {
-      // stop if phase changed
       if (!cursorRunningRef.current || round?.roundStatus !== "revealing")
         return;
 
-      // hop one slice
-      setHlIndex((idx) => ((idx ?? 0) + 1) % sliceCount);
-      // setHlColor(randColor());
-      playHop();
+      // hop
+      setHlIndex((idx) => {
+        const next = ((idx ?? 0) + 1) % sliceCount;
+        playHop();
+        lastHopAtRef.current = performance.now();
+        return next;
+      });
 
-      // compute how much time has passed in revealing [0..1]
+      // progress in [0..1]
       const left = Math.max(0, endAt - Date.now());
-      const k = 1 - clamp(left / Math.max(1, revealMs), 0, 1); // 0→1 from start→end
+      const k = 1 - Math.min(1, Math.max(0, left / Math.max(1, revealMs)));
 
-      // map k to delay: fast→slow, e.g. 50ms → 160ms
+      // delay goes 50ms → 160ms linearly (same as before)
       const delay = Math.round(50 + k * 110);
+      hopDelayRef.current = delay;
 
       cursorTimeoutRef.current = window.setTimeout(
         step,
@@ -980,9 +1009,8 @@ export default function App() {
       ) as unknown as number;
     };
 
-    // ensure an initial index
+    // ensure initial index
     setHlIndex((prev) => (prev == null ? 0 : prev));
-    // setHlColor(randColor());
     step();
   }
 
@@ -1354,64 +1382,65 @@ export default function App() {
   }
 
   // Winner-based origin (nicer than wheel center)
-// winner-based origin (unchanged)
-function winnerOriginOrCenter() {
-  const raw = (round as any)?.winnerBox ?? (round as any)?.winningBox;
-  const key = norm(raw);
-  const idx = liveBoxes.findIndex((b) => norm(b.key) === key);
-  if (idx >= 0) {
-    const p = targetForBet(idx, uid());
-    return { x: p.x, y: p.y };
+  // winner-based origin (unchanged)
+  function winnerOriginOrCenter() {
+    const raw = (round as any)?.winnerBox ?? (round as any)?.winningBox;
+    const key = norm(raw);
+    const idx = liveBoxes.findIndex((b) => norm(b.key) === key);
+    if (idx >= 0) {
+      const p = targetForBet(idx, uid());
+      return { x: p.x, y: p.y };
+    }
+    return getWheelCenter();
   }
-  return getWheelCenter();
-}
 
-// Drive coin flights from roundWinners exactly once per round
-useEffect(() => {
-  const phase = round?.roundStatus;
-  // Allow late data, but only after result is fixed
-  const resultFixed = phase === "revealed" || phase === "completed";
-  const meId = String((user as any)?.id ?? (user as any)?._id ?? "");
+  // Drive coin flights from roundWinners exactly once per round
+  useEffect(() => {
+    const phase = round?.roundStatus;
+    // Allow late data, but only after result is fixed
+    const resultFixed = phase === "revealed" || phase === "completed";
+    const meId = String((user as any)?.id ?? (user as any)?._id ?? "");
 
-  if (!currentRoundKey || !resultFixed || !roundWinners || !meId) return;
-  if (lastProcessedRoundRef.current === currentRoundKey) return;
-  if (winnersBurstDoneRef.current) return;
+    if (!currentRoundKey || !resultFixed || !roundWinners || !meId) return;
+    if (lastProcessedRoundRef.current === currentRoundKey) return;
+    if (winnersBurstDoneRef.current) return;
 
-  // Find my entry robustly
-  const meEntry =
-    roundWinners.topWinners?.find(
-      (x: any) => String(x.userId ?? x.user?._id ?? x._id ?? "") === meId
-    ) ?? null;
+    // Find my entry robustly
+    const meEntry =
+      roundWinners.topWinners?.find(
+        (x: any) => String(x.userId ?? x.user?._id ?? x._id ?? "") === meId
+      ) ?? null;
 
-  // If my row isn't here yet, don't mark processed — let future updates retrigger
-  if (!meEntry) return;
+    // If my row isn't here yet, don't mark processed — let future updates retrigger
+    if (!meEntry) return;
 
-  const won  = Math.max(0, Number(meEntry.amountWon ?? 0)); // payout returned
-  const bet  = Math.max(0, Number(meEntry.totalBet  ?? 0)); // stake placed
-  const loss = Math.max(0, bet - won);                      // stake not returned
+    const won = Math.max(0, Number(meEntry.amountWon ?? 0)); // payout returned
+    const bet = Math.max(0, Number(meEntry.totalBet ?? 0)); // stake placed
+    const loss = Math.max(0, bet - won); // stake not returned
 
-  // ✅ Correct scaling: only compute when strictly positive
-  const winCoins  = won  > 0 ? Math.min(10, Math.max(2, Math.round(won  / 5000))) : 0;
-  const lossCoins = loss > 0 ? Math.min(10, Math.max(2, Math.round(loss / 5000))) : 0;
+    // ✅ Correct scaling: only compute when strictly positive
+    const winCoins =
+      won > 0 ? Math.min(10, Math.max(2, Math.round(won / 5000))) : 0;
+    const lossCoins =
+      loss > 0 ? Math.min(10, Math.max(2, Math.round(loss / 5000))) : 0;
 
-  // If nothing to animate, don't consume the round yet (wait for better data)
-  if (winCoins === 0 && lossCoins === 0) return;
+    // If nothing to animate, don't consume the round yet (wait for better data)
+    if (winCoins === 0 && lossCoins === 0) return;
 
-  const origin = winnerOriginOrCenter();
+    const origin = winnerOriginOrCenter();
 
-  if (winCoins  > 0) spawnBurstTowardsBalance(winCoins, origin); // coin → balance
-  if (lossCoins > 0) spawnBurstTowardsBank   (lossCoins, origin); // coin → bank
+    if (winCoins > 0) spawnBurstTowardsBalance(winCoins, origin); // coin → balance
+    if (lossCoins > 0) spawnBurstTowardsBank(lossCoins, origin); // coin → bank
 
-  // Mark processed ONLY after we actually spawned something
-  lastProcessedRoundRef.current = currentRoundKey;
-  winnersBurstDoneRef.current   = true;
-}, [currentRoundKey, round?.roundStatus, roundWinners, user?.id, user?._id]);
-
+    // Mark processed ONLY after we actually spawned something
+    lastProcessedRoundRef.current = currentRoundKey;
+    winnersBurstDoneRef.current = true;
+  }, [currentRoundKey, round?.roundStatus, roundWinners, user?.id, user?._id]);
 
   return (
     <div
       ref={pageRef}
-      className="relative w-[360px] max-w-[360px] h-[700px] overflow-hidden mx-auto"
+      className="relative w-[370px] max-w-[370px] h-[700px] overflow-hidden mx-auto"
       style={{
         boxShadow: "0 20px 60px rgba(0,0,0,.35)",
         backgroundImage: `url(/bg-image.jpg)`,
@@ -1428,7 +1457,7 @@ useEffect(() => {
         {/* Phone frame */}
         <div
           ref={phoneRef}
-          className="relative w-[360px] max-w-[360px] min-h-screen bg-white/5  border border-white/10 rounded-[8px] overflow-hidden"
+          className="relative w-[370px] max-w-[370px] min-h-screen bg-white/5  border border-white/10 rounded-[8px] overflow-hidden"
           style={{
             boxShadow:
               "0 40px 140px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08)",
@@ -1999,21 +2028,20 @@ useEffect(() => {
 
                 return (
                   <div className="absolute -left-8 -right-8 flex justify-between">
-                    {/* PIZZA */}
-                    <div className="flex flex-col items-center w-12">
-                      <Circle idx={0} bg="#facc15" icon={pizza.icon ?? "🍕"} />
-                      <TopBadge idx={0}>Total {fmt(pizza.total)}</TopBadge>
-                      <BottomBadge idx={0} extraClass="-bottom-2">
-                        {pizza.multiplier ? `${pizza.multiplier}x` : "—"}
-                      </BottomBadge>
-                    </div>
-
                     {/* SALAD */}
                     <div className="flex flex-col items-center w-12">
                       <Circle idx={1} bg="#4ade80" icon={salad.icon ?? "🥗"} />
                       <TopBadge idx={1}>Total {fmt(salad.total)}</TopBadge>
                       <BottomBadge idx={1} extraClass="-mr-3 -bottom-2">
                         {salad.multiplier ? `${salad.multiplier}x` : "—"}
+                      </BottomBadge>
+                    </div>
+                    {/* PIZZA */}
+                    <div className="flex flex-col items-center w-12">
+                      <Circle idx={0} bg="#facc15" icon={pizza.icon ?? "🍕"} />
+                      <TopBadge idx={0}>Total {fmt(pizza.total)}</TopBadge>
+                      <BottomBadge idx={0} extraClass="-bottom-2">
+                        {pizza.multiplier ? `${pizza.multiplier}x` : "—"}
                       </BottomBadge>
                     </div>
                   </div>

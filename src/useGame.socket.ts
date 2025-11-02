@@ -477,7 +477,7 @@ const rehydrateAfterLogin = useCallback(async () => {
 
       return json;
     },
-    [currentRoundId]
+    [round.roundStatus ==="revealed"]
   );
 
   const getCurrentHistory = useCallback(async (): Promise<ApiHistoryItem[]> => {
