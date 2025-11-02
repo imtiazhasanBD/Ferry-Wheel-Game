@@ -890,14 +890,14 @@ export default function App() {
 
     setTimeout(() => setShowRoundWinners(true), WINNER_POPUP_DELAY_MS);
 
-    setBlockCount((prev) => {
-      const next = prev + 1;
-      if (displayBlockRound >= 10) {
-        setShowLeaderboard(true);
-        setIntermissionSec(INTERMISSION_SECS);
-      }
-      return next >= 10 ? 10 : next;
-    });
+    // setBlockCount((prev) => {
+    //   const next = prev + 1;
+    //   if (displayBlockRound >= 10) {
+    //     setShowLeaderboard(true);
+    //     setIntermissionSec(INTERMISSION_SECS);
+    //   }
+    //   return next >= 10 ? 10 : next;
+    // });
   }
 
   // track echo events we've already processed by betId
@@ -2454,8 +2454,8 @@ export default function App() {
               setShowLeaderboard(false);
               setIntermissionSec(undefined);
             }}
-            onStartNow={() => setIntermissionSec(0)}
-            intermissionSec={intermissionSec}
+            // onStartNow={() => setIntermissionSec(0)}
+            // intermissionSec={intermissionSec}
           />
           <TodayLeaderboardModal
             open={showTodayLeaderboard}
