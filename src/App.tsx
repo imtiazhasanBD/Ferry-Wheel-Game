@@ -32,7 +32,7 @@ import { WheelStand } from "./components/ImageWheelStand";
 
 /** ==================== CONFIG ==================== **/
 const CHIPS = [1000, 2000, 5000, 10000, 50000] as const;
-const INTERMISSION_SECS = 8; // how long the leaderboard intermission lasts
+//const INTERMISSION_SECS = 8; // how long the leaderboard intermission lasts
 const WINNER_POPUP_DELAY_MS = 1500; // hold on winner before showing popup
 
 // Sounds
@@ -684,21 +684,21 @@ export default function App() {
   const [intermissionSec, setIntermissionSec] = useState<number | undefined>(
     undefined
   );
-  const [blockCount, setBlockCount] = useState(0); // 0..10
+  //const [blockCount, setBlockCount] = useState(0); // 0..10
   // --- Betting sweep (red border + finger pointer) ---
   const [sweepIdx, setSweepIdx] = useState<number | null>(null);
 
-  const serverBlockRound = (
-    typeof (round as any)?.blockRound === "number"
-      ? (round as any).blockRound
-      : typeof (round as any)?.indexInBlock === "number"
-      ? (round as any).indexInBlock
-      : typeof (round as any)?.roundNumber === "number"
-      ? ((round as any).roundNumber % 10) + 1
-      : undefined
-  ) as number | undefined;
+  // const serverBlockRound = (
+  //   typeof (round as any)?.blockRound === "number"
+  //     ? (round as any).blockRound
+  //     : typeof (round as any)?.indexInBlock === "number"
+  //     ? (round as any).indexInBlock
+  //     : typeof (round as any)?.roundNumber === "number"
+  //     ? ((round as any).roundNumber % 10) + 1
+  //     : undefined
+  // ) as number | undefined;
 
-  const displayBlockRound = serverBlockRound ?? (blockCount % 10 || 10);
+  //const displayBlockRound = serverBlockRound ?? (blockCount % 10 || 10);
 
   /** ===== flies ===== */
   const spawnLocalFly = useCallback(
@@ -1122,7 +1122,7 @@ export default function App() {
       setIntermissionSec(undefined);
 
       // reset block tallies for the next 10-round block
-      setBlockCount(0);
+      //setBlockCount(0);
       //  setWinnersHistory([]);
 
       // tell the game to start the next round if it exposes a method
